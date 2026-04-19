@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Ventas</title>
+    <title>Sistema de Ventas - Taquería</title>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -12,10 +12,11 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        // Importación simplificada de Firebase
+        // Importamos Firebase directamente
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getDatabase, ref, push, onValue, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
+        // Tu configuración de Firebase
         const firebaseConfig = {
             apiKey: "AIzaSyBmRE258LdtlR5jAo3ChN9jG94C3MsMI68",
             authDomain: "sistema-ventas-4ae00.firebaseapp.com",
@@ -26,108 +27,108 @@
             appId: "1:774049154998:web:6a5e9297dc52abf3cc2317"
         };
 
-        const MENU_DEFAULT = {
-            "Chilaquiles":  { icon:"🍳", color:"#E85D04", precio:55 },
-            "Enchiladas":   { icon:"🌯", color:"#C1121F", precio:55 },
-            "Tacos":        { icon:"🌮", color:"#F48C06", precio:28 },
-            "Pambazos":     { icon:"🥙", color:"#DC2F02", precio:28 },
-            "Quesadillas":  { icon:"🫓", color:"#9D4EDD", precio:30 },
-            "Agua":         { icon:"💧", color:"#00B4D8", precio:25 },
-            "Refresco":     { icon:"🥤", color:"#EF233C", precio:25 }
-        };
+        const MENU = [
+            { id: 1, nombre: "Tacos", precio: 28, icon: "🌮", color: "#F48C06" },
+            { id: 2, nombre: "Chilaquiles", precio: 55, icon: "🍳", color: "#E85D04" },
+            { id: 3, nombre: "Pambazos", precio: 28, icon: "🥙", color: "#DC2F02" },
+            { id: 4, nombre: "Quesadillas", precio: 30, icon: "🫓", color: "#9D4EDD" },
+            { id: 5, nombre: "Refresco", precio: 25, icon: "🥤", color: "#EF233C" },
+            { id: 6, nombre: "Agua", precio: 25, icon: "💧", color: "#00B4D8" }
+        ];
 
         function App() {
             const [db, setDb] = React.useState(null);
-            const [view, setView] = React.useState("pedido");
-            const [pedidos, setPedidos] = React.useState({});
-            const [carrito, setCarrito] = React.useState([]);
+            const [view, setView] = React.useState("ventas"); // ventas o cocina
             const [mesa, setMesa] = React.useState("");
+            const [carrito, setCarrito] = React.useState([]);
+            const [pedidos, setPedidos] = React.useState({});
 
             React.useEffect(() => {
-                try {
-                    const app = initializeApp(firebaseConfig);
-                    const database = getDatabase(app);
-                    setDb(database);
-                    // Escuchar pedidos en tiempo real
-                    onValue(ref(database, "pedidos"), (snap) => {
-                        setPedidos(snap.val() || {});
-                    });
-                } catch (error) {
-                    console.error("Error conectando a Firebase:", error);
-                }
+                const app = initializeApp(firebaseConfig);
+                const database = getDatabase(app);
+                setDb(database);
+
+                // Escuchar pedidos de Firebase
+                onValue(ref(database, "pedidos"), (snapshot) => {
+                    setPedidos(snapshot.val() || {});
+                });
             }, []);
 
-            const enviarPedido = () => {
-                if (!mesa) return alert("Por favor indica la mesa o nombre.");
-                const total = carrito.reduce((s, i) => s + i.precio, 0);
-                
-                push(ref(db, "pedidos"), {
-                    items: carrito,
-                    mesa: mesa,
-                    total: total,
-                    estado: "pendiente",
-                    hora: new Date().toLocaleTimeString(),
-                    ts: Date.now()
-                });
+            const agregarAlCarrito = (producto) => {
+                setCarrito([...carrito, producto]);
+            };
 
+            const enviarPedido = () => {
+                if (!mesa) return alert("¡Escribe el número de mesa o nombre!");
+                if (carrito.length === 0) return alert("El carrito está vacío");
+
+                const nuevoPedido = {
+                    mesa,
+                    items: carrito,
+                    total: carrito.reduce((acc, curr) => acc + curr.precio, 0),
+                    estado: "pendiente",
+                    hora: new Date().toLocaleTimeString()
+                };
+
+                push(ref(db, "pedidos"), nuevoPedido);
                 setCarrito([]);
                 setMesa("");
-                alert("¡Pedido enviado!");
+                alert("✅ Pedido enviado a la cocina");
+            };
+
+            const marcarListo = (id) => {
+                update(ref(db, `pedidos/${id}`), { estado: "completado" });
             };
 
             return (
-                <div style={{ padding: "20px", maxWidth: "600px", margin: "0 auto" }}>
-                    <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
-                        <h1 style={{ color: "#E85D04", fontSize: "24px" }}>🌮 Mi Taquería</h1>
+                <div style={{ padding: "20px", maxWidth: "500px", margin: "0 auto" }}>
+                    <nav style={{ display: "flex", justifyContent: "space-between", marginBottom: "20px" }}>
+                        <h1 style={{ color: "#E85D04", margin: 0 }}>🌮 Taquería</h1>
                         <div>
-                            <button onClick={() => setView("pedido")} style={btnStyle(view === "pedido")}>Ventas</button>
-                            <button onClick={() => setView("cocina")} style={btnStyle(view === "cocina")}>Cocina</button>
+                            <button onClick={() => setView("ventas")} style={btnTabStyle(view === "ventas")}>Ventas</button>
+                            <button onClick={() => setView("cocina")} style={btnTabStyle(view === "cocina")}>Cocina</button>
                         </div>
-                    </header>
+                    </nav>
 
-                    {view === "pedido" ? (
+                    {view === "ventas" ? (
                         <div>
                             <input 
-                                placeholder="Mesa / Cliente" 
-                                value={mesa} 
-                                onChange={(e) => setMesa(e.target.value)} 
-                                style={inputStyle}
+                                placeholder="Mesa o Nombre" 
+                                style={inputStyle} 
+                                value={mesa}
+                                onChange={(e) => setMesa(e.target.value)}
                             />
                             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-                                {Object.entries(MENU_DEFAULT).map(([nombre, info]) => (
-                                    <button 
-                                        key={nombre} 
-                                        onClick={() => setCarrito([...carrito, { nombre, precio: info.precio }])}
-                                        style={cardStyle(info.color)}
-                                    >
-                                        <span style={{ fontSize: "24px" }}>{info.icon}</span><br/>
-                                        <b>{nombre}</b><br/>
-                                        ${info.precio}
+                                {MENU.map(p => (
+                                    <button key={p.id} onClick={() => agregarAlCarrito(p)} style={cardStyle(p.color)}>
+                                        <div style={{fontSize: "30px"}}>{p.icon}</div>
+                                        <div>{p.nombre}</div>
+                                        <div style={{opacity: 0.8}}>${p.precio}</div>
                                     </button>
                                 ))}
                             </div>
                             {carrito.length > 0 && (
                                 <button onClick={enviarPedido} style={fabStyle}>
-                                    🛒 Enviar Pedido (${carrito.reduce((s,i) => s + i.precio, 0)})
+                                    🛒 Enviar {carrito.length} items (${carrito.reduce((a,b)=>a+b.precio,0)})
                                 </button>
                             )}
                         </div>
                     ) : (
                         <div>
                             <h3>Pedidos Pendientes</h3>
-                            {Object.entries(pedidos).reverse().map(([id, p]) => p.estado === "pendiente" && (
-                                <div key={id} style={orderStyle}>
-                                    <b>{p.mesa}</b> <small>{p.hora}</small>
-                                    <ul style={{ paddingLeft: "15px", fontSize: "14px" }}>
-                                        {p.items.map((it, idx) => <li key={idx}>{it.nombre}</li>)}
-                                    </ul>
-                                    <button 
-                                        onClick={() => update(ref(db, `pedidos/${id}`), { estado: "listo" })}
-                                        style={doneBtnStyle}
-                                    >
-                                        Marcar como Listo
-                                    </button>
-                                </div>
+                            {Object.entries(pedidos).reverse().map(([id, p]) => (
+                                p.estado === "pendiente" && (
+                                    <div key={id} style={orderCard}>
+                                        <div style={{display:"flex", justifyContent:"space-between"}}>
+                                            <b style={{color: "#E85D04"}}>{p.mesa}</b>
+                                            <span>{p.hora}</span>
+                                        </div>
+                                        <ul style={{fontSize: "14px", margin: "10px 0"}}>
+                                            {p.items.map((it, i) => <li key={i}>{it.nombre}</li>)}
+                                        </ul>
+                                        <button onClick={() => marcarListo(id)} style={btnListo}>Marcar como Listo</button>
+                                    </div>
+                                )
                             ))}
                         </div>
                     )}
@@ -135,18 +136,18 @@
             );
         }
 
-        // Estilos Rápidos
-        const btnStyle = (active) => ({
+        // --- ESTILOS ---
+        const btnTabStyle = (active) => ({
             background: active ? "#E85D04" : "#333",
-            color: "#fff", border: "none", padding: "8px 15px", borderRadius: "5px", marginLeft: "5px", cursor: "pointer"
+            color: "white", border: "none", padding: "8px 15px", borderRadius: "8px", marginLeft: "5px", cursor: "pointer"
         });
-        const inputStyle = { width: "100%", padding: "12px", marginBottom: "15px", borderRadius: "8px", border: "1px solid #333", background: "#1A1A1A", color: "#fff", boxSizing: "border-box" };
+        const inputStyle = { width: "100%", padding: "12px", marginBottom: "15px", borderRadius: "8px", border: "1px solid #333", background: "#1A1A1A", color: "white", boxSizing: "border-box" };
         const cardStyle = (color) => ({
-            background: "#1A1A1A", border: `1px solid ${color}`, color: "#fff", padding: "15px", borderRadius: "10px", cursor: "pointer"
+            background: "#1A1A1A", border: `1px solid ${color}`, borderRadius: "12px", padding: "15px", color: "white", cursor: "pointer"
         });
-        const fabStyle = { position: "fixed", bottom: "20px", left: "50%", transform: "translateX(-50%)", background: "#E85D04", color: "#fff", padding: "15px 40px", borderRadius: "30px", border: "none", fontWeight: "bold", width: "80%", fontSize: "16px", boxShadow: "0 4px 10px rgba(0,0,0,0.5)" };
-        const orderStyle = { background: "#1A1A1A", padding: "15px", borderRadius: "10px", marginBottom: "10px", border: "1px solid #333" };
-        const doneBtnStyle = { background: "#06D6A0", border: "none", padding: "8px", width: "100%", borderRadius: "5px", fontWeight: "bold", marginTop: "10px", cursor: "pointer" };
+        const fabStyle = { position: "fixed", bottom: "20px", left: "50%", transform: "translateX(-50%)", width: "90%", maxWidth: "450px", background: "#E85D04", color: "white", border: "none", padding: "15px", borderRadius: "30px", fontWeight: "bold", fontSize: "16px", cursor: "pointer", boxShadow: "0 5px 15px rgba(0,0,0,0.5)" };
+        const orderCard = { background: "#1A1A1A", padding: "15px", borderRadius: "12px", marginBottom: "10px", border: "1px solid #333" };
+        const btnListo = { width: "100%", background: "#06D6A0", border: "none", padding: "10px", borderRadius: "8px", fontWeight: "bold", cursor: "pointer" };
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
