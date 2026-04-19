@@ -3,109 +3,110 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Explorando la Cultura Universal</title>
-    <style>
-        :root {
-            --gold: #D4AF37;
-            --dark: #121212;
-            --light: #f4f4f4;
-        }
-        body {
-            margin: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--dark);
-            color: var(--light);
-            line-height: 1.6;
-        }
-        header {
-            background: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url('https://images.unsplash.com/photo-1467269204594-9661b134dd2b?auto=format&fit=crop&w=1350&q=80');
-            background-size: cover;
-            background-position: center;
-            height: 60vh;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            text-align: center;
-            border-bottom: 4px solid var(--gold);
-        }
-        h1 {
-            font-size: 3.5rem;
-            margin: 0;
-            color: var(--gold);
-            text-transform: uppercase;
-            letter-spacing: 5px;
-        }
-        .container {
-            max-width: 1000px;
-            margin: -50px auto 50px;
-            padding: 20px;
-        }
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
-        }
-        .card {
-            background: #1e1e1e;
-            padding: 25px;
-            border-radius: 15px;
-            border-left: 5px solid var(--gold);
-            transition: transform 0.3s ease;
-        }
-        .card:hover {
-            transform: translateY(-10px);
-        }
-        h2 {
-            color: var(--gold);
-            margin-top: 0;
-        }
-        p {
-            color: #ccc;
-        }
-        .footer {
-            text-align: center;
-            padding: 40px;
-            background: #0a0a0a;
-            font-size: 0.9rem;
-            color: #666;
-        }
-    </style>
+    <title>Sistema Taquería</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 </head>
-<body>
+<body style="margin: 0; background: #0F0F0F; color: white; font-family: sans-serif;">
+    <div id="root"></div>
 
-<header>
-    <h1>Cultura del Mundo</h1>
-    <p>Un viaje por la historia y el legado de la humanidad</p>
-</header>
+    <script type="text/babel">
+        // 1. Configuración de tu Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyBmRE258LdtlR5jAo3ChN9jG94C3MsMI68",
+            authDomain: "sistema-ventas-4ae00.firebaseapp.com",
+            databaseURL: "https://sistema-ventas-4ae00-default-rtdb.firebaseio.com",
+            projectId: "sistema-ventas-4ae00",
+            storageBucket: "sistema-ventas-4ae00.firebasestorage.app",
+            messagingSenderId: "774049154998",
+            appId: "1:774049154998:web:6a5e9297dc52abf3cc2317"
+        };
 
-<div class="container">
-    <div class="grid">
-        <div class="card">
-            <h2>🏛️ La Antigua Grecia</h2>
-            <p>Cuna de la democracia, la filosofía occidental y los Juegos Olímpicos. Su arquitectura y arte siguen influyendo en el diseño moderno miles de años después.</p>
-        </div>
+        // Inicializar Firebase
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        const db = firebase.database();
 
-        <div class="card">
-            <h2>🏯 Dinastías Orientales</h2>
-            <p>Desde la Gran Muralla China hasta los templos de Kioto, la cultura oriental destaca por su equilibrio entre la tradición ancestral y la armonía espiritual.</p>
-        </div>
+        function App() {
+            const [view, setView] = React.useState("pedido");
+            const [mesa, setMesa] = React.useState("");
+            const [carrito, setCarrito] = React.useState([]);
+            const [pedidos, setPedidos] = React.useState([]);
 
-        <div class="card">
-            <h2>🌎 Legado Prehispánico</h2>
-            <p>Mayas, Aztecas e Incas dominaron la astronomía y las matemáticas, dejando pirámides y ciudades que desafían la ingeniería actual como Chichén Itzá o Machu Picchu.</p>
-        </div>
+            // Escuchar pedidos
+            React.useEffect(() => {
+                const pedidosRef = db.ref("pedidos");
+                pedidosRef.on("value", (snapshot) => {
+                    const data = snapshot.val();
+                    const lista = data ? Object.entries(data).map(([id, val]) => ({ id, ...val })) : [];
+                    setPedidos(lista.reverse());
+                });
+            }, []);
 
-        <div class="card">
-            <h2>🎨 El Renacimiento</h2>
-            <p>Una explosión de creatividad en Europa que cambió la forma en que vemos el mundo, liderada por genios como Leonardo da Vinci y Miguel Ángel.</p>
-        </div>
-    </div>
-</div>
+            const enviarPedido = () => {
+                if (!mesa) return alert("Escribe la mesa");
+                db.ref("pedidos").push({
+                    mesa,
+                    items: carrito,
+                    estado: "pendiente",
+                    hora: new Date().toLocaleTimeString()
+                });
+                setCarrito([]);
+                setMesa("");
+                alert("¡Enviado!");
+            };
 
-<div class="footer">
-    &copy; 2026 Portal de Cultura Universal - Creado para Daniel
-</div>
+            return (
+                <div style={{ padding: "20px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "20px" }}>
+                        <h2 style={{ color: "#E85D04" }}>🌮 TAQUERÍA</h2>
+                        <div>
+                            <button onClick={() => setView("pedido")} style={btnS}>Ventas</button>
+                            <button onClick={() => setView("cocina")} style={btnS}>Cocina</button>
+                        </div>
+                    </div>
 
+                    {view === "pedido" ? (
+                        <div>
+                            <input placeholder="Mesa / Cliente" value={mesa} onChange={e => setMesa(e.target.value)} style={inputS} />
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                                {["Tacos", "Tortas", "Agua", "Refresco"].map(prod => (
+                                    <button key={prod} onClick={() => setCarrito([...carrito, { nombre: prod, precio: 25 }])} style={cardS}>
+                                        {prod}
+                                    </button>
+                                ))}
+                            </div>
+                            {carrito.length > 0 && <button onClick={enviarPedido} style={fabS}>Enviar (${carrito.length * 25})</button>}
+                        </div>
+                    ) : (
+                        <div>
+                            {pedidos.filter(p => p.estado === "pendiente").map(p => (
+                                <div key={p.id} style={orderS}>
+                                    <b>{p.mesa}</b> - {p.hora}
+                                    {p.items.map((it, i) => <div key={i}>• {it.nombre}</div>)}
+                                    <button onClick={() => db.ref(`pedidos/${p.id}`).update({ estado: "listo" })} style={doneS}>Listo</button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        const btnS = { background: "#333", color: "#fff", border: "none", padding: "10px", borderRadius: "5px", marginLeft: "5px" };
+        const inputS = { width: "100%", padding: "10px", marginBottom: "10px", borderRadius: "5px", boxSizing: "border-box" };
+        const cardS = { background: "#1A1A1A", color: "#fff", border: "1px solid #E85D04", padding: "20px", borderRadius: "10px" };
+        const fabS = { position: "fixed", bottom: "20px", left: "10%", width: "80%", background: "#E85D04", color: "#fff", padding: "15px", borderRadius: "30px", border: "none", fontWeight: "bold" };
+        const orderS = { background: "#1A1A1A", padding: "15px", borderRadius: "10px", marginBottom: "10px", border: "1px solid #333" };
+        const doneS = { background: "#06D6A0", border: "none", padding: "10px", width: "100%", marginTop: "10px", borderRadius: "5px" };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
 </body>
 </html>
