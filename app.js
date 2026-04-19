@@ -137,7 +137,6 @@ function App() {
     showNotif("✅ Menú actualizado");
   }, [db]);
 
-  if (fbError) return <FirebaseSetup />;
   if (!usuario) return <LoginScreen onLogin={login} />;
 
   const pedidosArr = Object.entries(pedidos)
@@ -291,39 +290,6 @@ function RolInfo({ color, icon, rol, desc }) {
       <div style={{fontSize:22}}>{icon}</div>
       <div style={{fontWeight:700,fontSize:13,color:"#eee"}}>{rol}</div>
       <div style={{fontSize:11,color:"#888",marginTop:2}}>{desc}</div>
-    </div>
-  );
-}
-
-// ═══════════════════════════════════════════════════════════════
-//  FIREBASE SETUP GUIDE
-// ═══════════════════════════════════════════════════════════════
-function FirebaseSetup() {
-  return (
-    <div style={S.setupWrap}>
-      <div style={S.setupBox} className="fadeIn">
-        <div style={{fontSize:52,marginBottom:12}}>🔥</div>
-        <h2 style={{color:"#E85D04",marginBottom:8}}>Configura Firebase</h2>
-        <p style={{color:"#aaa",lineHeight:1.7,fontSize:14,marginBottom:20}}>
-          Para que todos los dispositivos estén sincronizados necesitas conectar una base de datos gratuita.
-        </p>
-        <div style={S.setupSteps}>
-          {[
-            "Ve a console.firebase.google.com",
-            "Crea un nuevo proyecto (gratis, sin tarjeta)",
-            "Ve a Realtime Database → Crear base de datos → modo prueba",
-            "Ve a Configuración del proyecto → Tu app web → Registrar app",
-            "Copia la config y pégala en FIREBASE_CONFIG en app.js",
-            "Cambia las contraseñas en el arreglo USUARIOS",
-            "Sube los archivos a Vercel.com (gratis) y comparte el link",
-          ].map((p,i) => (
-            <div key={i} style={S.setupStep}>
-              <span style={S.setupNum}>{i+1}</span>
-              <span style={{color:"#ccc",fontSize:14,lineHeight:1.5}}>{p}</span>
-            </div>
-          ))}
-        </div>
-      </div>
     </div>
   );
 }
