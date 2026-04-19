@@ -3,154 +3,109 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Ventas - Taquería</title>
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-</head>
-<body style="margin: 0; background: #0F0F0F; color: white; font-family: sans-serif;">
-    <div id="root"></div>
-
-    <script type="text/babel">
-        // Importamos Firebase directamente
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getDatabase, ref, push, onValue, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-
-        // Tu configuración de Firebase
-        const firebaseConfig = {
-            apiKey: "AIzaSyBmRE258LdtlR5jAo3ChN9jG94C3MsMI68",
-            authDomain: "sistema-ventas-4ae00.firebaseapp.com",
-            databaseURL: "https://sistema-ventas-4ae00-default-rtdb.firebaseio.com",
-            projectId: "sistema-ventas-4ae00",
-            storageBucket: "sistema-ventas-4ae00.firebasestorage.app",
-            messagingSenderId: "774049154998",
-            appId: "1:774049154998:web:6a5e9297dc52abf3cc2317"
-        };
-
-        const MENU = [
-            { id: 1, nombre: "Tacos", precio: 28, icon: "🌮", color: "#F48C06" },
-            { id: 2, nombre: "Chilaquiles", precio: 55, icon: "🍳", color: "#E85D04" },
-            { id: 3, nombre: "Pambazos", precio: 28, icon: "🥙", color: "#DC2F02" },
-            { id: 4, nombre: "Quesadillas", precio: 30, icon: "🫓", color: "#9D4EDD" },
-            { id: 5, nombre: "Refresco", precio: 25, icon: "🥤", color: "#EF233C" },
-            { id: 6, nombre: "Agua", precio: 25, icon: "💧", color: "#00B4D8" }
-        ];
-
-        function App() {
-            const [db, setDb] = React.useState(null);
-            const [view, setView] = React.useState("ventas"); // ventas o cocina
-            const [mesa, setMesa] = React.useState("");
-            const [carrito, setCarrito] = React.useState([]);
-            const [pedidos, setPedidos] = React.useState({});
-
-            React.useEffect(() => {
-                const app = initializeApp(firebaseConfig);
-                const database = getDatabase(app);
-                setDb(database);
-
-                // Escuchar pedidos de Firebase
-                onValue(ref(database, "pedidos"), (snapshot) => {
-                    setPedidos(snapshot.val() || {});
-                });
-            }, []);
-
-            const agregarAlCarrito = (producto) => {
-                setCarrito([...carrito, producto]);
-            };
-
-            const enviarPedido = () => {
-                if (!mesa) return alert("¡Escribe el número de mesa o nombre!");
-                if (carrito.length === 0) return alert("El carrito está vacío");
-
-                const nuevoPedido = {
-                    mesa,
-                    items: carrito,
-                    total: carrito.reduce((acc, curr) => acc + curr.precio, 0),
-                    estado: "pendiente",
-                    hora: new Date().toLocaleTimeString()
-                };
-
-                push(ref(db, "pedidos"), nuevoPedido);
-                setCarrito([]);
-                setMesa("");
-                alert("✅ Pedido enviado a la cocina");
-            };
-
-            const marcarListo = (id) => {
-                update(ref(db, `pedidos/${id}`), { estado: "completado" });
-            };
-
-            return (
-                <div style={{ padding: "20px", maxWidth: "500px", margin: "0 auto" }}>
-                    <nav style={{ display: "flex", justifyContent: "space-between", marginBottom: "20px" }}>
-                        <h1 style={{ color: "#E85D04", margin: 0 }}>🌮 Taquería</h1>
-                        <div>
-                            <button onClick={() => setView("ventas")} style={btnTabStyle(view === "ventas")}>Ventas</button>
-                            <button onClick={() => setView("cocina")} style={btnTabStyle(view === "cocina")}>Cocina</button>
-                        </div>
-                    </nav>
-
-                    {view === "ventas" ? (
-                        <div>
-                            <input 
-                                placeholder="Mesa o Nombre" 
-                                style={inputStyle} 
-                                value={mesa}
-                                onChange={(e) => setMesa(e.target.value)}
-                            />
-                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-                                {MENU.map(p => (
-                                    <button key={p.id} onClick={() => agregarAlCarrito(p)} style={cardStyle(p.color)}>
-                                        <div style={{fontSize: "30px"}}>{p.icon}</div>
-                                        <div>{p.nombre}</div>
-                                        <div style={{opacity: 0.8}}>${p.precio}</div>
-                                    </button>
-                                ))}
-                            </div>
-                            {carrito.length > 0 && (
-                                <button onClick={enviarPedido} style={fabStyle}>
-                                    🛒 Enviar {carrito.length} items (${carrito.reduce((a,b)=>a+b.precio,0)})
-                                </button>
-                            )}
-                        </div>
-                    ) : (
-                        <div>
-                            <h3>Pedidos Pendientes</h3>
-                            {Object.entries(pedidos).reverse().map(([id, p]) => (
-                                p.estado === "pendiente" && (
-                                    <div key={id} style={orderCard}>
-                                        <div style={{display:"flex", justifyContent:"space-between"}}>
-                                            <b style={{color: "#E85D04"}}>{p.mesa}</b>
-                                            <span>{p.hora}</span>
-                                        </div>
-                                        <ul style={{fontSize: "14px", margin: "10px 0"}}>
-                                            {p.items.map((it, i) => <li key={i}>{it.nombre}</li>)}
-                                        </ul>
-                                        <button onClick={() => marcarListo(id)} style={btnListo}>Marcar como Listo</button>
-                                    </div>
-                                )
-                            ))}
-                        </div>
-                    )}
-                </div>
-            );
+    <title>Explorando la Cultura Universal</title>
+    <style>
+        :root {
+            --gold: #D4AF37;
+            --dark: #121212;
+            --light: #f4f4f4;
         }
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--dark);
+            color: var(--light);
+            line-height: 1.6;
+        }
+        header {
+            background: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url('https://images.unsplash.com/photo-1467269204594-9661b134dd2b?auto=format&fit=crop&w=1350&q=80');
+            background-size: cover;
+            background-position: center;
+            height: 60vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            border-bottom: 4px solid var(--gold);
+        }
+        h1 {
+            font-size: 3.5rem;
+            margin: 0;
+            color: var(--gold);
+            text-transform: uppercase;
+            letter-spacing: 5px;
+        }
+        .container {
+            max-width: 1000px;
+            margin: -50px auto 50px;
+            padding: 20px;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        .card {
+            background: #1e1e1e;
+            padding: 25px;
+            border-radius: 15px;
+            border-left: 5px solid var(--gold);
+            transition: transform 0.3s ease;
+        }
+        .card:hover {
+            transform: translateY(-10px);
+        }
+        h2 {
+            color: var(--gold);
+            margin-top: 0;
+        }
+        p {
+            color: #ccc;
+        }
+        .footer {
+            text-align: center;
+            padding: 40px;
+            background: #0a0a0a;
+            font-size: 0.9rem;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
 
-        // --- ESTILOS ---
-        const btnTabStyle = (active) => ({
-            background: active ? "#E85D04" : "#333",
-            color: "white", border: "none", padding: "8px 15px", borderRadius: "8px", marginLeft: "5px", cursor: "pointer"
-        });
-        const inputStyle = { width: "100%", padding: "12px", marginBottom: "15px", borderRadius: "8px", border: "1px solid #333", background: "#1A1A1A", color: "white", boxSizing: "border-box" };
-        const cardStyle = (color) => ({
-            background: "#1A1A1A", border: `1px solid ${color}`, borderRadius: "12px", padding: "15px", color: "white", cursor: "pointer"
-        });
-        const fabStyle = { position: "fixed", bottom: "20px", left: "50%", transform: "translateX(-50%)", width: "90%", maxWidth: "450px", background: "#E85D04", color: "white", border: "none", padding: "15px", borderRadius: "30px", fontWeight: "bold", fontSize: "16px", cursor: "pointer", boxShadow: "0 5px 15px rgba(0,0,0,0.5)" };
-        const orderCard = { background: "#1A1A1A", padding: "15px", borderRadius: "12px", marginBottom: "10px", border: "1px solid #333" };
-        const btnListo = { width: "100%", background: "#06D6A0", border: "none", padding: "10px", borderRadius: "8px", fontWeight: "bold", cursor: "pointer" };
+<header>
+    <h1>Cultura del Mundo</h1>
+    <p>Un viaje por la historia y el legado de la humanidad</p>
+</header>
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
-    </script>
+<div class="container">
+    <div class="grid">
+        <div class="card">
+            <h2>🏛️ La Antigua Grecia</h2>
+            <p>Cuna de la democracia, la filosofía occidental y los Juegos Olímpicos. Su arquitectura y arte siguen influyendo en el diseño moderno miles de años después.</p>
+        </div>
+
+        <div class="card">
+            <h2>🏯 Dinastías Orientales</h2>
+            <p>Desde la Gran Muralla China hasta los templos de Kioto, la cultura oriental destaca por su equilibrio entre la tradición ancestral y la armonía espiritual.</p>
+        </div>
+
+        <div class="card">
+            <h2>🌎 Legado Prehispánico</h2>
+            <p>Mayas, Aztecas e Incas dominaron la astronomía y las matemáticas, dejando pirámides y ciudades que desafían la ingeniería actual como Chichén Itzá o Machu Picchu.</p>
+        </div>
+
+        <div class="card">
+            <h2>🎨 El Renacimiento</h2>
+            <p>Una explosión de creatividad en Europa que cambió la forma en que vemos el mundo, liderada por genios como Leonardo da Vinci y Miguel Ángel.</p>
+        </div>
+    </div>
+</div>
+
+<div class="footer">
+    &copy; 2026 Portal de Cultura Universal - Creado para Daniel
+</div>
+
 </body>
 </html>
