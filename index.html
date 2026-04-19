@@ -3,20 +3,118 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Ventas - Taquería</title>
+    <title>Mi Taquería - Sistema de Ventas</title>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <style>
-        body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-    </style>
 </head>
-<body>
+<body style="margin: 0; background: #0F0F0F; color: #fff; font-family: sans-serif;">
     <div id="root"></div>
 
-    <script type="text/babel" data-type="module">
-        import App from './App.jsx';
-        
+    <script type="text/babel">
+        const { useState, useEffect, useCallback } = React;
+
+        // Importación de Firebase para navegadores
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getDatabase, ref, push, onValue, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBmRE258LdtlR5jAo3ChN9jG94C3MsMI68",
+            authDomain: "sistema-ventas-4ae00.firebaseapp.com",
+            databaseURL: "https://sistema-ventas-4ae00-default-rtdb.firebaseio.com",
+            projectId: "sistema-ventas-4ae00",
+            storageBucket: "sistema-ventas-4ae00.firebasestorage.app",
+            messagingSenderId: "774049154998",
+            appId: "1:774049154998:web:6a5e9297dc52abf3cc2317"
+        };
+
+        const MENU_DEFAULT = {
+            "Chilaquiles":  { icon:"🍳", color:"#E85D04", precio:55 },
+            "Enchiladas":   { icon:"🌯", color:"#C1121F", precio:55 },
+            "Tacos":        { icon:"🌮", color:"#F48C06", precio:28 },
+            "Pambazos":     { icon:"🥙", color:"#DC2F02", precio:28 },
+            "Quesadillas":  { icon:"🫓", color:"#9D4EDD", precio:30 },
+            "Agua":         { icon:"💧", color:"#00B4D8", precio:25 },
+            "Refresco":     { icon:"🥤", color:"#EF233C", precio:25 }
+        };
+
+        function App() {
+            const [db, setDb] = useState(null);
+            const [view, setView] = useState("pedido");
+            const [pedidos, setPedidos] = useState({});
+            const [carrito, setCarrito] = useState([]);
+            const [mesa, setMesa] = useState("");
+
+            useEffect(() => {
+                const app = initializeApp(firebaseConfig);
+                const database = getDatabase(app);
+                setDb(database);
+                onValue(ref(database, "pedidos"), snap => setPedidos(snap.val() || {}));
+            }, []);
+
+            const enviarPedido = () => {
+                if (!mesa) return alert("Por favor, pon el número de mesa o nombre del cliente");
+                const total = carrito.reduce((s, i) => s + i.precio, 0);
+                push(ref(db, "pedidos"), { 
+                    items: carrito, mesa, total, 
+                    fecha: new Date().toISOString().split('T')[0], 
+                    estado: "pendiente", 
+                    ts: Date.now(),
+                    hora: new Date().toLocaleTimeString() 
+                });
+                setCarrito([]); setMesa(""); alert("✅ ¡Pedido enviado a cocina!");
+            };
+
+            return (
+                <div style={{ padding: "20px" }}>
+                    <nav style={{ display: "flex", justifyContent: "space-between", marginBottom: "20px", alignItems: "center" }}>
+                        <h2 style={{ color: "#E85D04", margin: 0 }}>🌮 Taquería</h2>
+                        <div>
+                            <button onClick={() => setView("pedido")} style={btnStyle}>📱 Pedido</button>
+                            <button onClick={() => setView("central")} style={btnStyle}>📺 Cocina</button>
+                        </div>
+                    </nav>
+
+                    {view === "pedido" ? (
+                        <div>
+                            <input placeholder="Mesa / Nombre del Cliente" value={mesa} onChange={e=>setMesa(e.target.value)} style={inputStyle} />
+                            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(110px, 1fr))", gap: "10px" }}>
+                                {Object.entries(MENU_DEFAULT).map(([n, d]) => (
+                                    <button key={n} onClick={() => setCarrito([...carrito, { nombre: n, precio: d.precio }])} style={{ background: "#1A1A1A", border: `2px solid ${d.color}`, color: "#fff", padding: "15px", borderRadius: "12px", cursor: "pointer" }}>
+                                        <span style={{ fontSize: "24px" }}>{d.icon}</span><br/>{n}<br/>${d.precio}
+                                    </button>
+                                ))}
+                            </div>
+                            {carrito.length > 0 && (
+                                <button onClick={enviarPedido} style={fabStyle}>🚀 Enviar a Cocina (${carrito.reduce((s,i)=>s+i.precio, 0)})</button>
+                            )}
+                        </div>
+                    ) : (
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "10px" }}>
+                            <h3 style={{ borderBottom: "1px solid #333", paddingBottom: "10px" }}>Pedidos Pendientes</h3>
+                            {Object.entries(pedidos).filter(([id, p]) => p.estado === "pendiente").length === 0 && <p>No hay pedidos pendientes.</p>}
+                            {Object.entries(pedidos).filter(([id, p]) => p.estado === "pendiente").map(([id, p]) => (
+                                <div key={id} style={{ background: "#1A1A1A", padding: "15px", borderRadius: "10px", border: "1px solid #333" }}>
+                                    <div style={{display: "flex", justifyContent: "space-between"}}>
+                                        <b style={{color: "#E85D04"}}>{p.mesa}</b>
+                                        <small>{p.hora}</small>
+                                    </div>
+                                    <div style={{margin: "10px 0"}}>
+                                        {p.items.map((it, idx) => <div key={idx} style={{fontSize: "14px"}}>• {it.nombre}</div>)}
+                                    </div>
+                                    <button onClick={() => update(ref(db, `pedidos/${id}`), { estado: "listo" })} style={{ background: "#06D6A0", border: "none", padding: "10px", borderRadius: "5px", width: "100%", fontWeight: "bold", cursor: "pointer", color: "#000" }}>✅ Marcar como Listo</button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        const btnStyle = { background: "#333", color: "#fff", border: "none", padding: "8px 12px", borderRadius: "8px", marginLeft: "5px", cursor: "pointer" };
+        const inputStyle = { width: "100%", padding: "12px", marginBottom: "15px", background: "#1A1A1A", border: "1px solid #333", color: "#fff", borderRadius: "8px", boxSizing: "border-box" };
+        const fabStyle = { position: "fixed", bottom: "20px", left: "50%", transform: "translateX(-50%)", background: "#E85D04", color: "#fff", padding: "15px", borderRadius: "30px", border: "none", fontWeight: "bold", width: "90%", cursor: "pointer", fontSize: "16px", boxShadow: "0 4px 15px rgba(0,0,0,0.5)" };
+
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
     </script>
