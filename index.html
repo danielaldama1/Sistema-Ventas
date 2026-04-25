@@ -1,164 +1,64 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Ventas - Taquería</title>
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="theme-color" content="#0F0F0F"/>
+  <title>🌮 Bendito Antojo</title>
+
+  <!-- React 18 -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <!-- Firebase Compat (más simple, sin módulos) -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; background: #0F0F0F; color: #F0EBE3; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; -webkit-tap-highlight-color: transparent; }
+    #root { min-height: 100vh; }
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: #1a1a1a; }
+    ::-webkit-scrollbar-thumb { background: #444; border-radius: 3px; }
+
+    @keyframes slideDown {
+      from { opacity:0; transform:translateX(-50%) translateY(-10px); }
+      to   { opacity:1; transform:translateX(-50%) translateY(0); }
+    }
+    @keyframes slideUp {
+      from { transform:translateY(100%); }
+      to   { transform:translateY(0); }
+    }
+    @keyframes fadeIn {
+      from { opacity:0; transform:scale(.97); }
+      to   { opacity:1; transform:scale(1); }
+    }
+    @keyframes pulse {
+      0%,100% { box-shadow:0 4px 20px rgba(232,93,4,.5); }
+      50%      { box-shadow:0 4px 32px rgba(232,93,4,.9); }
+    }
+    @keyframes blink {
+      0%,100% { opacity:1; } 50% { opacity:.3; }
+    }
+    .toast    { animation: slideDown .25s ease; }
+    .drawer   { animation: slideUp  .28s ease; }
+    .fadeIn   { animation: fadeIn   .2s ease;  }
+    .fab      { animation: pulse    2s infinite; }
+    .blink    { animation: blink    1.8s infinite; }
+  </style>
 </head>
-<body style="margin: 0; background: #0F0F0F; color: white; font-family: -apple-system, sans-serif;">
-    <div id="root"></div>
-
-    <script type="text/babel">
-        // Importamos Firebase de forma que el navegador lo entienda sin errores
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getDatabase, ref, push, onValue, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-
-        const firebaseConfig = {
-            apiKey: "AIzaSyBmRE258LdtlR5jAo3ChN9jG94C3MsMI68",
-            authDomain: "sistema-ventas-4ae00.firebaseapp.com",
-            databaseURL: "https://sistema-ventas-4ae00-default-rtdb.firebaseio.com",
-            projectId: "sistema-ventas-4ae00",
-            storageBucket: "sistema-ventas-4ae00.firebasestorage.app",
-            messagingSenderId: "774049154998",
-            appId: "1:774049154998:web:6a5e9297dc52abf3cc2317"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const db = getDatabase(app);
-
-        // --- TU MENÚ ORIGINAL ---
-        const MENU_DATA = {
-            "Favoritos": [
-                { id: 1, nombre: "Tacos", precio: 28, icon: "🌮", color: "#F48C06" },
-                { id: 2, nombre: "Chilaquiles", precio: 55, icon: "🍳", color: "#E85D04" }
-            ],
-            "Comidas": [
-                { id: 4, nombre: "Enchiladas", precio: 55, icon: "🌯", color: "#C1121F" },
-                { id: 5, nombre: "Huaraches", precio: 40, icon: "🫔", color: "#3A86FF" }
-            ],
-            "Bebidas": [
-                { id: 7, nombre: "Refresco", precio: 25, icon: "🥤", color: "#EF233C" },
-                { id: 8, nombre: "Agua", precio: 25, icon: "💧", color: "#00B4D8" }
-            ]
-        };
-
-        function App() {
-            const [view, setView] = React.useState("ventas");
-            const [category, setCategory] = React.useState("Favoritos");
-            const [mesa, setMesa] = React.useState("");
-            const [carrito, setCarrito] = React.useState([]);
-            const [pedidos, setPedidos] = React.useState({});
-
-            // Escuchar la base de datos en tiempo real
-            React.useEffect(() => {
-                const pedidosRef = ref(db, "pedidos");
-                onValue(pedidosRef, (snapshot) => {
-                    setPedidos(snapshot.val() || {});
-                });
-            }, []);
-
-            const enviarPedido = () => {
-                if (!mesa) return alert("Escribe el número de mesa");
-                if (carrito.length === 0) return alert("Carrito vacío");
-
-                push(ref(db, "pedidos"), {
-                    mesa,
-                    items: carrito,
-                    total: carrito.reduce((acc, item) => acc + item.precio, 0),
-                    estado: "pendiente",
-                    hora: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                });
-
-                setCarrito([]);
-                setMesa("");
-                alert("✅ Pedido enviado con éxito");
-            };
-
-            const cambiarEstado = (id, nuevoEstado) => {
-                update(ref(db, `pedidos/${id}`), { estado: nuevoEstado });
-            };
-
-            return (
-                <div style={{ minHeight: "100vh" }}>
-                    <nav style={S.nav}>
-                        <h2 style={{color: "#E85D04", margin: 0}}>🌮 MiTaquería</h2>
-                        <div style={{display: "flex", gap: "10px"}}>
-                            <button onClick={() => setView("ventas")} style={S.navBtn}>Ventas</button>
-                            <button onClick={() => setView("cocina")} style={S.navBtn}>Cocina</button>
-                        </div>
-                    </nav>
-
-                    {view === "ventas" ? (
-                        <div style={{padding: "15px"}}>
-                            <input placeholder="Número de Mesa" value={mesa} onChange={e=>setMesa(e.target.value)} style={S.input} />
-                            
-                            <div style={S.catRow}>
-                                {Object.keys(MENU_DATA).map(c => (
-                                    <button key={c} onClick={() => setCategory(c)} style={category === c ? S.catBtnAct : S.catBtn}>{c}</button>
-                                ))}
-                            </div>
-
-                            <div style={S.grid}>
-                                {MENU_DATA[category].map(p => (
-                                    <div key={p.id} onClick={() => setCarrito([...carrito, p])} style={{...S.card, borderTop: `4px solid ${p.color}`}}>
-                                        <div style={{fontSize: "24px"}}>{p.icon}</div>
-                                        <div style={{fontWeight: "bold"}}>{p.nombre}</div>
-                                        <div style={{opacity: 0.7}}>${p.precio}</div>
-                                    </div>
-                                ))}
-                            </div>
-
-                            {carrito.length > 0 && (
-                                <button onClick={enviarPedido} style={S.fab}>
-                                    🛒 Enviar a Cocina (${carrito.reduce((a,b)=>a+b.precio,0)})
-                                </button>
-                            )}
-                        </div>
-                    ) : (
-                        <div style={{padding: "15px"}}>
-                            <h3>Pedidos Pendientes</h3>
-                            <div style={S.kanban}>
-                                {Object.entries(pedidos).reverse().map(([id, p]) => (
-                                    p.estado === "pendiente" && (
-                                        <div key={id} style={S.orderCard}>
-                                            <div style={{display:"flex", justifyContent:"space-between"}}>
-                                                <b>Mesa: {p.mesa}</b>
-                                                <small>{p.hora}</small>
-                                            </div>
-                                            <div style={{margin: "10px 0"}}>
-                                                {p.items.map((it, i) => <div key={i}>• {it.nombre}</div>)}
-                                            </div>
-                                            <button onClick={() => cambiarEstado(id, "listo")} style={S.btnDone}>Marcar como Listo</button>
-                                        </div>
-                                    )
-                                ))}
-                            </div>
-                        </div>
-                    )}
-                </div>
-            );
-        }
-
-        const S = {
-            nav: { display:"flex", justifyContent:"space-between", padding:"15px", background:"#1A1A1A", borderBottom:"1px solid #333", alignItems:"center" },
-            navBtn: { background:"#333", color:"#fff", border:"none", padding:"8px 12px", borderRadius: "8px" },
-            input: { width:"100%", padding:"12px", background:"#1A1A1A", border:"1px solid #333", color:"#fff", borderRadius:"10px", marginBottom:"15px", boxSizing:"border-box" },
-            catRow: { display:"flex", gap:"10px", marginBottom:"15px", overflowX:"auto" },
-            catBtn: { background:"#1A1A1A", color:"#fff", border:"1px solid #333", padding:"8px 15px", borderRadius:"20px", whiteSpace:"nowrap" },
-            catBtnAct: { background:"#E85D04", color:"#fff", border:"none", padding:"8px 15px", borderRadius:"20px", whiteSpace:"nowrap" },
-            grid: { display:"grid", gridTemplateColumns:"1fr 1fr", gap:"10px" },
-            card: { background:"#1A1A1A", padding:"15px", borderRadius:"12px", textAlign:"center", cursor:"pointer" },
-            fab: { position:"fixed", bottom:"20px", left:"50%", transform:"translateX(-50%)", width:"90%", background:"#E85D04", color:"#fff", padding:"15px", borderRadius:"30px", border:"none", fontWeight:"bold", fontSize: "16px" },
-            kanban: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))", gap: "10px" },
-            orderCard: { background: "#1A1A1A", padding: "15px", borderRadius: "12px", border: "1px solid #333" },
-            btnDone: { width: "100%", background: "#06D6A0", color: "#000", border: "none", padding: "10px", borderRadius: "8px", fontWeight: "bold" }
-        };
-
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
-    </script>
+<body>
+  <div id="root">
+    <div style="display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column;gap:16px;">
+      <div style="font-size:60px">🌮</div>
+      <div style="color:#E85D04;font-weight:800;font-size:24px;letter-spacing:1px">Bendito Antojo</div>
+      <div style="color:#555;font-size:14px">Iniciando sistema...</div>
+    </div>
+  </div>
+  <script type="text/babel" src="app.js"></script>
 </body>
 </html>
