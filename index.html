@@ -1,64 +1,178 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
-  <meta name="apple-mobile-web-app-capable" content="yes"/>
-  <meta name="theme-color" content="#0F0F0F"/>
-  <title>🌮 Bendito Antojo</title>
-
-  <!-- React 18 -->
-  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
-  <!-- Firebase Compat (más simple, sin módulos) -->
-  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
-
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body { height: 100%; background: #0F0F0F; color: #F0EBE3; }
-    body { font-family: 'Segoe UI', system-ui, sans-serif; -webkit-tap-highlight-color: transparent; }
-    #root { min-height: 100vh; }
-    ::-webkit-scrollbar { width: 5px; }
-    ::-webkit-scrollbar-track { background: #1a1a1a; }
-    ::-webkit-scrollbar-thumb { background: #444; border-radius: 3px; }
-
-    @keyframes slideDown {
-      from { opacity:0; transform:translateX(-50%) translateY(-10px); }
-      to   { opacity:1; transform:translateX(-50%) translateY(0); }
-    }
-    @keyframes slideUp {
-      from { transform:translateY(100%); }
-      to   { transform:translateY(0); }
-    }
-    @keyframes fadeIn {
-      from { opacity:0; transform:scale(.97); }
-      to   { opacity:1; transform:scale(1); }
-    }
-    @keyframes pulse {
-      0%,100% { box-shadow:0 4px 20px rgba(232,93,4,.5); }
-      50%      { box-shadow:0 4px 32px rgba(232,93,4,.9); }
-    }
-    @keyframes blink {
-      0%,100% { opacity:1; } 50% { opacity:.3; }
-    }
-    .toast    { animation: slideDown .25s ease; }
-    .drawer   { animation: slideUp  .28s ease; }
-    .fadeIn   { animation: fadeIn   .2s ease;  }
-    .fab      { animation: pulse    2s infinite; }
-    .blink    { animation: blink    1.8s infinite; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Ventas - MiTaquería</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 </head>
-<body>
-  <div id="root">
-    <div style="display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column;gap:16px;">
-      <div style="font-size:60px">🌮</div>
-      <div style="color:#E85D04;font-weight:800;font-size:24px;letter-spacing:1px">La Taquiza Sagrada</div>
-      <div style="color:#555;font-size:14px">Iniciando sistema...</div>
-    </div>
-  </div>
-  <script type="text/babel" src="app.js"></script>
+<body style="margin: 0; background: #0F0F0F; color: #F0EBE3; font-family: system-ui;">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        // ═══════════════════════════════════════════════════════
+        //  🔥 CONFIGURACIÓN DE TU FIREBASE (CORREGIDA)
+        // ═══════════════════════════════════════════════════════
+        const firebaseConfig = {
+            apiKey: "AIzaSyBmRE258LdtlR5jAo3ChN9jG94C3MsMI68",
+            authDomain: "sistema-ventas-4ae00.firebaseapp.com",
+            databaseURL: "https://sistema-ventas-4ae00-default-rtdb.firebaseio.com",
+            projectId: "sistema-ventas-4ae00",
+            storageBucket: "sistema-ventas-4ae00.firebasestorage.app",
+            messagingSenderId: "774049154998",
+            appId: "1:774049154998:web:6a5e9297dc52abf3cc2317"
+        };
+
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        const db = firebase.database();
+
+        // Tu menú original con variantes y extras
+        const MENU_DEFAULT = {
+            "Chilaquiles":  { icon:"🍳", color:"#E85D04", precio:55 },
+            "Enchiladas":   { icon:"🌯", color:"#C1121F", precio:55 },
+            "Tacos":        { icon:"🌮", color:"#F48C06", precio:28 },
+            "Pambazos":     { icon:"🥙", color:"#DC2F02", precio:28 },
+            "Quesadillas":  { icon:"🫓", color:"#9D4EDD", precio:30 },
+            "Huaraches":    { icon:"🫔", color:"#3A86FF", precio:40 },
+            "Gorditas":     { icon:"🫔", color:"#06D6A0", precio:25 },
+            "Agua":         { icon:"💧", color:"#00B4D8", precio:25 },
+            "Café":         { icon:"☕", color:"#6F4E37", precio:20 },
+            "Atole":        { icon:"🥛", color:"#F4A261", precio:25 },
+            "Refresco":     { icon:"🥤", color:"#EF233C", precio:25 },
+            "Michelada":    { icon:"🍺", color:"#FFBA08", precio:45 },
+            "Mojito":       { icon:"🍹", color:"#40916C", precio:60 }
+        };
+
+        const ADMIN_PASSWORD = "Angeles14";
+        const fmt = (n) => `$${Number(n||0).toFixed(0)}`;
+
+        function App() {
+            const [view, setView] = React.useState("central");
+            const [pedidos, setPedidos] = React.useState({});
+            const [carrito, setCarrito] = React.useState([]);
+            const [mesa, setMesa] = React.useState("");
+            const [isAdmin, setIsAdmin] = React.useState(false);
+            const [notif, setNotif] = React.useState(null);
+
+            // Escuchar pedidos de Firebase
+            React.useEffect(() => {
+                const ref = db.ref("pedidos");
+                ref.on("value", snapshot => {
+                    setPedidos(snapshot.val() || {});
+                });
+                return () => ref.off();
+            }, []);
+
+            const showNotif = (msg) => {
+                setNotif(msg);
+                setTimeout(() => setNotif(null), 2500);
+            };
+
+            const enviarPedido = () => {
+                if(!mesa) return alert("Indica la mesa");
+                db.ref("pedidos").push({
+                    mesa,
+                    items: carrito,
+                    total: carrito.reduce((s,i) => s + i.precio, 0),
+                    estado: "pendiente",
+                    ts: Date.now(),
+                    hora: new Date().toLocaleTimeString("es-MX",{hour:"2-digit",minute:"2-digit"}),
+                    fecha: new Date().toISOString().split('T')[0]
+                }).then(() => {
+                    showNotif("✅ Pedido enviado a cocina");
+                    setCarrito([]); setMesa(""); setView("central");
+                });
+            };
+
+            const updateEstado = (id, nuevoEstado) => {
+                db.ref(`pedidos/${id}`).update({ estado: nuevoEstado });
+            };
+
+            return (
+                <div>
+                    {notif && <div style={S.toast}>{notif}</div>}
+                    <nav style={S.nav}>
+                        <div style={S.brand}>🌮 <b>MiTaquería</b></div>
+                        <div style={S.navBtns}>
+                            <button onClick={()=>setView("central")} style={view==="central"?S.navBtnOn:S.navBtn}>📺 Central</button>
+                            <button onClick={()=>setView("pedido")} style={view==="pedido"?S.navBtnOn:S.navBtn}>📱 Pedido</button>
+                            <button onClick={()=>setView("admin")} style={view==="admin"?S.navBtnOn:S.navBtn}>⚙️ Admin</button>
+                        </div>
+                    </nav>
+
+                    <main style={{padding: 16}}>
+                        {view === "central" && (
+                            <div style={S.kanban}>
+                                {Object.entries(pedidos).reverse().map(([id, p]) => (
+                                    p.estado === "pendiente" && (
+                                        <div key={id} style={S.card}>
+                                            <div style={{display:"flex", justifyContent:"space-between"}}>
+                                                <b>Mesa: {p.mesa}</b>
+                                                <small>{p.hora}</small>
+                                            </div>
+                                            <div style={{margin:"10px 0"}}>
+                                                {p.items.map((it, i) => <div key={i}>• {it.nombre}</div>)}
+                                            </div>
+                                            <button onClick={()=>updateEstado(id, "listo")} style={S.btnDone}>Listo</button>
+                                        </div>
+                                    )
+                                ))}
+                            </div>
+                        )}
+
+                        {view === "pedido" && (
+                            <div>
+                                <input style={S.input} placeholder="Mesa / Nombre" value={mesa} onChange={e=>setMesa(e.target.value)} />
+                                <div style={S.grid}>
+                                    {Object.entries(MENU_DEFAULT).map(([n, d]) => (
+                                        <button key={n} onClick={()=>setCarrito([...carrito, {nombre:n, precio:d.precio}])} style={{...S.mCard, borderTop:`4px solid ${d.color}`}}>
+                                            <div style={{fontSize:24}}>{d.icon}</div>
+                                            <div>{n}</div>
+                                        </button>
+                                    ))}
+                                </div>
+                                {carrito.length > 0 && (
+                                    <button onClick={enviarPedido} style={S.fab}>🚀 Enviar ({fmt(carrito.reduce((s,i)=>s+i.precio,0))})</button>
+                                )}
+                            </div>
+                        )}
+
+                        {view === "admin" && (
+                            <div style={{textAlign:"center", paddingTop:50}}>
+                                <h3>Panel de Control</h3>
+                                <p>Total Ventas Hoy: {fmt(Object.values(pedidos).reduce((s,p)=>s+p.total,0))}</p>
+                            </div>
+                        )}
+                    </main>
+                </div>
+            );
+        }
+
+        const S = {
+            nav:{ display:"flex", justifyContent:"space-between", padding:"0 16px", height:58, background:"#1A1A1A", alignItems:"center", borderBottom:"2px solid #E85D04" },
+            brand:{ color:"#E85D04", fontSize:20 },
+            navBtns:{ display:"flex", gap:5 },
+            navBtn:{ background:"transparent", color:"#aaa", border:"1px solid #333", padding:"5px 10px", borderRadius:15, fontSize:12 },
+            navBtnOn:{ background:"#E85D04", color:"#fff", border:"none", padding:"5px 10px", borderRadius:15, fontSize:12 },
+            toast:{ position:"fixed", top:20, left:"50%", transform:"translateX(-50%)", background:"#06D6A0", color:"#000", padding:"10px 20px", borderRadius:20, zIndex:100 },
+            input:{ width:"100%", padding:12, background:"#1A1A1A", border:"1px solid #333", color:"#fff", borderRadius:10, marginBottom:15, boxSizing:"border-box" },
+            grid:{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(110px, 1fr))", gap:10 },
+            mCard:{ background:"#1A1A1A", color:"#fff", padding:15, borderRadius:12, border:"none", cursor:"pointer" },
+            fab:{ position:"fixed", bottom:20, left:"50%", transform:"translateX(-50%)", background:"#E85D04", color:"#fff", border:"none", padding:"15px 30px", borderRadius:30, fontWeight:"bold", width:"80%" },
+            kanban:{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(250px, 1fr))", gap:15 },
+            card:{ background:"#1A1A1A", padding:15, borderRadius:12, border:"1px solid #333" },
+            btnDone:{ width:"100%", background:"#06D6A0", border:"none", padding:10, borderRadius:8, fontWeight:"bold", marginTop:10 }
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
 </body>
 </html>
