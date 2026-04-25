@@ -1,4 +1,39 @@
-", variantes:["Corona 1/2 L","Corona 1 L","Victoria 1/2 L","Victoria 1 L"], extras:["Clamato","Naranja","Tamarindo","Limón","Salsas","Todo","Solo Limón y Sal"], precios:{"Corona 1/2 L":45,"Corona 1 L":90,"Victoria 1/2 L":45,"Victoria 1 L":90} },
+import React, { useState, useEffect, useCallback, useRef } from "https://esm.sh/react@18";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getDatabase, ref, push, onValue, update, remove, set } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+// ═══════════════════════════════════════════════════════
+//  🔥 FIREBASE CONFIG
+// ═══════════════════════════════════════════════════════
+const firebaseConfig = {
+  apiKey: "AIzaSyBmRE258LdtlR5jAo3ChN9jG94C3MsMI68",
+  authDomain: "sistema-ventas-4ae00.firebaseapp.com",
+  databaseURL: "https://sistema-ventas-4ae00-default-rtdb.firebaseio.com",
+  projectId: "sistema-ventas-4ae00",
+  storageBucket: "sistema-ventas-4ae00.firebasestorage.app",
+  messagingSenderId: "774049154998",
+  appId: "1:774049154998:web:6a5e9297dc52abf3cc2317",
+  measurementId: "G-XGKJ9F7XCJ"
+};
+
+const ADMIN_PASSWORD = "Angeles14";
+
+// ═══════════════════════════════════════════════════════
+//  MENÚ DEFAULT
+// ═══════════════════════════════════════════════════════
+const MENU_DEFAULT = {
+  "Chilaquiles":  { icon:"🍳", color:"#E85D04", categoria:"comida", variantes:["Verdes","Rojos"], rellenos:["Pollo","Suadero","Campechanos","Huevo"], extras:["Queso","Crema","Cebolla"], precio:55 },
+  "Enchiladas":   { icon:"🌯", color:"#C1121F", categoria:"comida", variantes:["Sencillas","Pollo","Otro"], extras:["Queso","Crema","Lechuga"], precio:55 },
+  "Tacos":        { icon:"🌮", color:"#F48C06", categoria:"comida", variantes:["Suadero","Longaniza","Campechanos"], extras:["Nopales","Papas","Cebolla","Cilantro"], precio:28, unidad:"c/u" },
+  "Pambazos":     { icon:"🥙", color:"#DC2F02", categoria:"comida", variantes:["Chicharrón","Queso","Tinga","Papa con Longaniza","Hongos","Suadero"], extras:["Lechuga","Queso","Crema"], precio:28 },
+  "Quesadillas":  { icon:"🫓", color:"#9D4EDD", categoria:"comida", variantes:["Chicharrón","Queso","Tinga","Papa con Longaniza","Hongos","Suadero"], extras:["Lechuga","Queso","Crema"], precio:30 },
+  "Huaraches":    { icon:"🫔", color:"#3A86FF", categoria:"comida", variantes:["Suadero","Longaniza","Campechanos","Otro"], extras:["Cebolla","Lechuga","Queso"], precio:40 },
+  "Gorditas":     { icon:"🫔", color:"#06D6A0", categoria:"comida", variantes:["Suadero","Otro"], extras:["Cilantro","Cebolla","Queso"], precio:25 },
+  "Agua":         { icon:"💧", color:"#00B4D8", categoria:"bebida", variantes:["1/2 L","1 L"], precios:{"1/2 L":25,"1 L":35} },
+  "Café":         { icon:"☕", color:"#6F4E37", categoria:"bebida", variantes:["1/4 L","1/2 L","1 L"], precios:{"1/4 L":20,"1/2 L":37,"1 L":70} },
+  "Atole":        { icon:"🥛", color:"#F4A261", categoria:"bebida", variantes:["1/4 L","1/2 L","1 L"], precios:{"1/4 L":25,"1/2 L":45,"1 L":85} },
+  "Refresco":     { icon:"🥤", color:"#EF233C", categoria:"bebida", variantes:["Lata/Botella"], precios:{"Lata/Botella":25} },
+  "Michelada":    { icon:"🍺", color:"#FFBA08", categoria:"bebida", variantes:["Corona 1/2 L","Corona 1 L","Victoria 1/2 L","Victoria 1 L"], extras:["Clamato","Naranja","Tamarindo","Limón","Salsas","Todo","Solo Limón y Sal"], precios:{"Corona 1/2 L":45,"Corona 1 L":90,"Victoria 1/2 L":45,"Victoria 1 L":90} },
   "Mojito":       { icon:"🍹", color:"#40916C", categoria:"bebida", variantes:["Limón","Frutos Rojos","Fresa"], tamanos:["1/2 L","1 L"], precios:{"1/2 L":60,"1 L":100} },
 };
 
