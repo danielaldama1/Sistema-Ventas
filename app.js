@@ -170,7 +170,7 @@ function App() {
       <nav style={S.nav}>
         <div style={S.brand}>
           <span style={{fontSize:24}}>🌮</span>
-          <span style={S.brandText}>La Taquiza Sagrada</span>
+          <span style={S.brandText}>Bendito Antojo</span>
           {fbReady && <span className="blink" style={S.onlineDot}>● LIVE</span>}
         </div>
 
