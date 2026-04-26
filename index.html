@@ -12,465 +12,669 @@
   <style>
     * { box-sizing: border-box; }
     body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #0F0F0F; }
-    select option { background: #111; color: #fff; }
+    select option { background: #1a1a1a; color: #fff; }
+    ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: #111; } ::-webkit-scrollbar-thumb { background: #444; border-radius: 3px; }
   </style>
 </head>
 <body>
-  <div id="root"></div>
-  <script type="text/babel">
-    const { useState, useEffect, useCallback } = React;
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useCallback } = React;
 
-    // ═══════════════════════════════════════
-    // FIREBASE CONFIG
-    // ═══════════════════════════════════════
-    const firebaseConfig = {
-      apiKey: "AIzaSyBmRE258LdtlR5jAo3ChN9jG94C3MsMI68",
-      authDomain: "sistema-ventas-4ae00.firebaseapp.com",
-      databaseURL: "https://sistema-ventas-4ae00-default-rtdb.firebaseio.com",
-      projectId: "sistema-ventas-4ae00",
-      storageBucket: "sistema-ventas-4ae00.firebasestorage.app",
-      messagingSenderId: "774049154998",
-      appId: "1:774049154998:web:6a5e9297dc52abf3cc2317"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
+// ══════════════════════════════════════════════════════
+// FIREBASE
+// ══════════════════════════════════════════════════════
+firebase.initializeApp({
+  apiKey: "AIzaSyBmRE258LdtlR5jAo3ChN9jG94C3MsMI68",
+  authDomain: "sistema-ventas-4ae00.firebaseapp.com",
+  databaseURL: "https://sistema-ventas-4ae00-default-rtdb.firebaseio.com",
+  projectId: "sistema-ventas-4ae00",
+  storageBucket: "sistema-ventas-4ae00.firebasestorage.app",
+  messagingSenderId: "774049154998",
+  appId: "1:774049154998:web:6a5e9297dc52abf3cc2317"
+});
+const db = firebase.database();
+const ADMIN_PASSWORD = "Angeles14";
 
-    const ADMIN_PASSWORD = "Angeles14";
+// ══════════════════════════════════════════════════════
+// MENÚ
+// ══════════════════════════════════════════════════════
+const MENU_DEFAULT = {
+  "Chilaquiles": {
+    icon:"🍳", color:"#E85D04", categoria:"comida", precio:55,
+    variantes:["Verdes","Rojos"],
+    rellenos:["Pollo","Suadero","Campechanos","Huevo"],
+    extras:["Queso","Crema","Cebolla","Nopales"]
+  },
+  "Enchiladas": {
+    icon:"🌯", color:"#C1121F", categoria:"comida", precio:55,
+    variantes:["Sencillas","Pollo","Suadero","Otro"],
+    extras:["Queso","Crema","Lechuga","Cebolla"]
+  },
+  "Tacos": {
+    icon:"🌮", color:"#F48C06", categoria:"comida", precio:28, unidad:"c/u",
+    variantes:["Suadero","Longaniza","Campechanos","Mixtos"],
+    extras:["Nopales","Papas","Cebolla","Cilantro","Salsa Verde","Salsa Roja","Limón"]
+  },
+  "Pambazos": {
+    icon:"🥙", color:"#DC2F02", categoria:"comida", precio:28,
+    variantes:["Chicharrón","Queso","Tinga","Papa con Longaniza","Hongos","Suadero"],
+    extras:["Lechuga","Queso","Crema","Cebolla","Salsa"]
+  },
+  "Quesadillas": {
+    icon:"🫓", color:"#9D4EDD", categoria:"comida", precio:30,
+    variantes:["Chicharrón","Queso","Tinga","Papa con Longaniza","Hongos","Suadero","Flor de Calabaza"],
+    extras:["Lechuga","Queso","Crema","Guacamole","Salsa Verde","Salsa Roja"]
+  },
+  "Huaraches": {
+    icon:"🫔", color:"#3A86FF", categoria:"comida", precio:40,
+    variantes:["Suadero","Longaniza","Campechanos","Otro"],
+    extras:["Cebolla","Lechuga","Queso","Crema","Salsa Verde","Salsa Roja","Guacamole"]
+  },
+  "Gorditas": {
+    icon:"🫔", color:"#06D6A0", categoria:"comida", precio:25,
+    variantes:["Suadero","Longaniza","Chicharrón","Queso","Otro"],
+    extras:["Cilantro","Cebolla","Queso","Crema","Salsa"]
+  },
+  "Agua": {
+    icon:"💧", color:"#00B4D8", categoria:"bebida",
+    variantes:["1/2 L","1 L"],
+    sabores:["Natural","Jamaica","Horchata","Limón","Tamarindo","Pepino"],
+    precios:{"1/2 L":25,"1 L":35}
+  },
+  "Café": {
+    icon:"☕", color:"#6F4E37", categoria:"bebida",
+    variantes:["1/4 L","1/2 L","1 L"],
+    extras:["Con leche","Sin azúcar","Con piloncillo","Con canela"],
+    precios:{"1/4 L":20,"1/2 L":37,"1 L":70}
+  },
+  "Atole": {
+    icon:"🥛", color:"#F4A261", categoria:"bebida",
+    variantes:["1/4 L","1/2 L","1 L"],
+    sabores:["Guayaba","Fresa","Vainilla","Chocolate","Nuez"],
+    precios:{"1/4 L":25,"1/2 L":45,"1 L":85}
+  },
+  "Refresco": {
+    icon:"🥤", color:"#EF233C", categoria:"bebida",
+    variantes:["Coca-Cola","Sprite","Fanta","Sidral","Agua Mineral","Sangría"],
+    precios:{"Coca-Cola":25,"Sprite":25,"Fanta":25,"Sidral":25,"Agua Mineral":25,"Sangría":25}
+  },
+  "Michelada": {
+    icon:"🍺", color:"#FFBA08", categoria:"bebida",
+    variantes:["Corona 1/2 L","Corona 1 L","Victoria 1/2 L","Victoria 1 L","XX Lager 1/2 L","XX Lager 1 L"],
+    extras:["Clamato","Naranja","Tamarindo","Limón","Salsas","Todo","Solo Limón y Sal","Chamoy"],
+    precios:{"Corona 1/2 L":45,"Corona 1 L":90,"Victoria 1/2 L":45,"Victoria 1 L":90,"XX Lager 1/2 L":45,"XX Lager 1 L":90}
+  },
+  "Mojito": {
+    icon:"🍹", color:"#40916C", categoria:"bebida",
+    variantes:["Limón 1/2 L","Limón 1 L","Fresa 1/2 L","Fresa 1 L","Frutos Rojos 1/2 L","Frutos Rojos 1 L"],
+    extras:["Extra menta","Sin azúcar","Extra limón"],
+    precios:{"Limón 1/2 L":60,"Limón 1 L":100,"Fresa 1/2 L":60,"Fresa 1 L":100,"Frutos Rojos 1/2 L":70,"Frutos Rojos 1 L":120}
+  },
+  "Caguama": {
+    icon:"🍻", color:"#B5830A", categoria:"bebida",
+    variantes:["Corona","Victoria","XX Lager","Modelo Especial"],
+    precios:{"Corona":55,"Victoria":55,"XX Lager":55,"Modelo Especial":55}
+  },
+};
 
-    // ═══════════════════════════════════════
-    // MENÚ DEFAULT
-    // ═══════════════════════════════════════
-    const MENU_DEFAULT = {
-      "Chilaquiles":  { icon:"🍳", color:"#E85D04", categoria:"comida", variantes:["Verdes","Rojos"], precio:55 },
-      "Enchiladas":   { icon:"🌯", color:"#C1121F", categoria:"comida", variantes:["Sencillas","Pollo","Otro"], precio:55 },
-      "Tacos":        { icon:"🌮", color:"#F48C06", categoria:"comida", variantes:["Suadero","Longaniza","Campechanos"], precio:28 },
-      "Pambazos":     { icon:"🥙", color:"#DC2F02", categoria:"comida", variantes:["Chicharrón","Queso","Tinga","Papa con Longaniza","Hongos","Suadero"], precio:28 },
-      "Quesadillas":  { icon:"🫓", color:"#9D4EDD", categoria:"comida", variantes:["Chicharrón","Queso","Tinga","Papa con Longaniza","Hongos","Suadero"], precio:30 },
-      "Huaraches":    { icon:"🫔", color:"#3A86FF", categoria:"comida", variantes:["Suadero","Longaniza","Campechanos","Otro"], precio:40 },
-      "Gorditas":     { icon:"🫔", color:"#06D6A0", categoria:"comida", variantes:["Suadero","Otro"], precio:25 },
-      "Agua":         { icon:"💧", color:"#00B4D8", categoria:"bebida", variantes:["1/2 L","1 L"], precios:{"1/2 L":25,"1 L":35} },
-      "Café":         { icon:"☕", color:"#6F4E37", categoria:"bebida", variantes:["1/4 L","1/2 L","1 L"], precios:{"1/4 L":20,"1/2 L":37,"1 L":70} },
-      "Atole":        { icon:"🥛", color:"#F4A261", categoria:"bebida", variantes:["1/4 L","1/2 L","1 L"], precios:{"1/4 L":25,"1/2 L":45,"1 L":85} },
-      "Refresco":     { icon:"🥤", color:"#EF233C", categoria:"bebida", variantes:["Lata/Botella"], precios:{"Lata/Botella":25} },
-      "Michelada":    { icon:"🍺", color:"#FFBA08", categoria:"bebida", variantes:["Corona 1/2 L","Corona 1 L","Victoria 1/2 L","Victoria 1 L"], precios:{"Corona 1/2 L":45,"Corona 1 L":90,"Victoria 1/2 L":45,"Victoria 1 L":90} },
-      "Mojito":       { icon:"🍹", color:"#40916C", categoria:"bebida", variantes:["Limón 1/2 L","Limón 1 L","Fresa 1/2 L","Fresa 1 L","Frutos Rojos 1/2 L","Frutos Rojos 1 L"], precios:{"Limón 1/2 L":60,"Limón 1 L":100,"Fresa 1/2 L":60,"Fresa 1 L":100,"Frutos Rojos 1/2 L":70,"Frutos Rojos 1 L":120} },
-      "Caguama":      { icon:"🍻", color:"#B5830A", categoria:"bebida", variantes:["Caguama"], precios:{"Caguama":55} },
-    };
+// ══════════════════════════════════════════════════════
+// HELPERS
+// ══════════════════════════════════════════════════════
+const getTodayKey = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+};
+const getToday = () => new Date().toLocaleDateString("es-MX",{weekday:"long",year:"numeric",month:"long",day:"numeric"});
+const fmt = n => `$${Number(n||0).toFixed(0)}`;
+const getPrecio = (datos, variante) => {
+  if (datos.precios && variante && datos.precios[variante] !== undefined) return datos.precios[variante];
+  return datos.precio || 0;
+};
 
-    // ═══════════════════════════════════════
-    // HELPERS
-    // ═══════════════════════════════════════
-    const getTodayKey = () => {
-      const d = new Date();
-      return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-    };
-    const getToday = () => new Date().toLocaleDateString("es-MX",{weekday:"long",year:"numeric",month:"long",day:"numeric"});
-    const fmt = n => `$${Number(n||0).toFixed(0)}`;
-    const getPrecio = (datos, variante) => {
-      if (datos.precios && variante && datos.precios[variante] !== undefined) return datos.precios[variante];
-      return datos.precio || 0;
-    };
+// ══════════════════════════════════════════════════════
+// MODAL PERSONALIZACIÓN — aparece al tocar cualquier producto
+// ══════════════════════════════════════════════════════
+function ModalProducto({ producto, nombre, onConfirmar, onCerrar }) {
+  const d = producto;
+  const primeraVariante = d.variantes?.[0] || null;
+  const [variante,  setVariante]  = useState(primeraVariante);
+  const [relleno,   setRelleno]   = useState(d.rellenos?.[0] || null);
+  const [sabor,     setSabor]     = useState(d.sabores?.[0] || null);
+  const [extras,    setExtras]    = useState([]);
+  const [cantidad,  setCantidad]  = useState(1);
+  const [nota,      setNota]      = useState("");
 
-    // ═══════════════════════════════════════
-    // APP PRINCIPAL
-    // ═══════════════════════════════════════
-    function App() {
-      const [view, setView]       = useState("central");
-      const [pedidos, setPedidos] = useState({});
-      const [menu, setMenu]       = useState(MENU_DEFAULT);
-      const [notif, setNotif]     = useState(null);
-      const [isAdmin, setIsAdmin] = useState(false);
-      const [fbReady, setFbReady] = useState(false);
+  const toggleExtra = ex => setExtras(prev => prev.includes(ex) ? prev.filter(e=>e!==ex) : [...prev,ex]);
+  const precio = getPrecio(d, variante);
+  const subtotal = precio * cantidad;
 
-      useEffect(() => {
-        db.ref("pedidos").on("value", snap => setPedidos(snap.val() || {}));
-        db.ref("menu").on("value", snap => {
-          const val = snap.val();
-          if (val) setMenu(val);
-          else db.ref("menu").set(MENU_DEFAULT);
-        });
-        setFbReady(true);
-      }, []);
+  const partes = [variante, relleno, sabor, extras.length ? extras.join(", ") : null, nota || null].filter(Boolean);
+  const descripcion = `${nombre}${partes.length ? ` (${partes.join(" | ")})` : ""}`;
 
-      const showNotif = msg => { setNotif(msg); setTimeout(() => setNotif(null), 2500); };
-
-      const addPedido = useCallback(pedido => {
-        db.ref("pedidos").push({
-          ...pedido,
-          fecha: getTodayKey(),
-          hora: new Date().toLocaleTimeString("es-MX",{hour:"2-digit",minute:"2-digit"}),
-          estado: "pendiente",
-          ts: Date.now()
-        });
-        showNotif("✅ Pedido enviado a cocina");
-      }, []);
-
-      const agregarAlPedido = useCallback((id, pedidoActual, itemsNuevos) => {
-        const itemsActualizados = [...(pedidoActual.items || []), ...itemsNuevos];
-        const nuevoTotal = itemsActualizados.reduce((s,i) => s + (i.subtotal||0), 0);
-        db.ref(`pedidos/${id}`).update({
-          items: itemsActualizados,
-          total: nuevoTotal,
-          estado: "pendiente",
-          actualizado: new Date().toLocaleTimeString("es-MX",{hour:"2-digit",minute:"2-digit"})
-        });
-        showNotif("✅ Productos añadidos — pedido regresó a Pendientes");
-      }, []);
-
-      const updateEstado = (id, estado) => db.ref(`pedidos/${id}`).update({ estado });
-      const cancelar     = id => db.ref(`pedidos/${id}`).update({ estado: "cancelado" });
-
-      const pedidosArr = Object.entries(pedidos).map(([id,p]) => ({...p,id})).sort((a,b) => (b.ts||0)-(a.ts||0));
-      const hoy = pedidosArr.filter(p => p.fecha === getTodayKey());
-
-      return (
-        <div style={S.root}>
-          {notif && <div style={S.toast}>{notif}</div>}
-          <nav style={S.nav}>
-            <div style={S.brand}>
-              <span style={{fontSize:26}}>🌮</span>
-              <span style={S.brandText}>MiTaquería</span>
-              {fbReady && <span style={S.online}>● EN VIVO</span>}
-            </div>
-            <div style={S.navBtns}>
-              {[{k:"central",l:"📺 Central"},{k:"pedido",l:"📱 Pedido"},{k:"reportes",l:"📊 Reportes"},{k:"admin",l:"⚙️ Admin"}].map(v => (
-                <button key={v.k}
-                  style={{...S.navBtn,...(view===v.k?S.navBtnOn:{})}}
-                  onClick={() => {
-                    if ((v.k==="reportes"||v.k==="admin") && !isAdmin) setView("login");
-                    else setView(v.k);
-                  }}>
-                  {v.l}
-                </button>
-              ))}
-            </div>
-          </nav>
-          <main style={S.main}>
-            {view==="central"  && <Central pedidos={hoy} onUpdate={updateEstado} onCancelar={cancelar} onAgregarAl={agregarAlPedido} menu={menu}/>}
-            {view==="pedido"   && <Pedido  onAdd={addPedido} menu={menu}/>}
-            {view==="reportes" && isAdmin && <Reportes pedidos={pedidosArr}/>}
-            {view==="admin"    && isAdmin && <AdminView menu={menu}/>}
-            {view==="login"    && <Login onLogin={ok => { if(ok){ setIsAdmin(true); setView("reportes"); }}}/>}
-          </main>
+  return (
+    <div style={M.overlay} onClick={e=>{ if(e.target===e.currentTarget) onCerrar(); }}>
+      <div style={M.box}>
+        {/* Header */}
+        <div style={M.header}>
+          <span style={{fontSize:32}}>{d.icon}</span>
+          <div>
+            <div style={{fontWeight:800,fontSize:17,color:"#F0EBE3"}}>{nombre}</div>
+            <div style={{fontSize:13,color:"#E85D04",fontWeight:700}}>{fmt(precio)} {d.unidad||""}</div>
+          </div>
+          <button style={M.closeBtn} onClick={onCerrar}>✕</button>
         </div>
-      );
-    }
 
-    // ═══════════════════════════════════════
-    // CENTRAL — tablero kanban
-    // ═══════════════════════════════════════
-    function Central({ pedidos, onUpdate, onCancelar, onAgregarAl, menu }) {
-      const [pedidoSelec, setPedidoSelec] = useState(null);
-      const [carritoExtra, setCarritoExtra] = useState([]);
-      const [varSel, setVarSel] = useState({});
-
-      const cols = [
-        { k:"pendiente",  l:"⏳ Pendientes", c:"#FFBA08", acc:[{l:"▶ Preparar",e:"en_proceso",c:"#3A86FF"}] },
-        { k:"en_proceso", l:"👨‍🍳 En Proceso", c:"#3A86FF", acc:[{l:"✅ Listo",   e:"listo",    c:"#06D6A0"}] },
-        { k:"listo",      l:"✅ Listos",      c:"#06D6A0", acc:[{l:"🤝 Entregar",e:"entregado",c:"#888"}]    },
-        { k:"entregado",  l:"🤝 Entregados",  c:"#888",    acc:[] },
-      ];
-
-      const agregarExtra = (nombre, datos) => {
-        const variante = varSel[nombre] || (datos.variantes&&datos.variantes[0]) || null;
-        const precio   = getPrecio(datos, variante);
-        const label    = variante ? `${nombre} (${variante})` : nombre;
-        setCarritoExtra(prev => [...prev, {nombre:label, cantidad:1, subtotal:precio, icon:datos.icon}]);
-      };
-
-      const confirmar = () => {
-        if (!pedidoSelec || carritoExtra.length===0) return;
-        onAgregarAl(pedidoSelec.id, pedidoSelec, carritoExtra);
-        setPedidoSelec(null);
-        setCarritoExtra([]);
-      };
-
-      return (
-        <div>
-          <div style={S.centralDate}>📅 {getToday()}</div>
-
-          {pedidoSelec && (
-            <div style={S.overlay}>
-              <div style={S.modal}>
-                <h3 style={{margin:"0 0 12px",color:"#E85D04"}}>
-                  ➕ Agregar a pedido #{String(pedidoSelec.ts).slice(-4)} — {pedidoSelec.mesa||"Sin mesa"}
-                </h3>
-                <div style={{maxHeight:"40vh",overflowY:"auto"}}>
-                  {Object.entries(menu).map(([nombre, datos]) => (
-                    <div key={nombre} style={S.modalRow}>
-                      <span style={{fontSize:13}}>{datos.icon} <b>{nombre}</b></span>
-                      <div style={{display:"flex",gap:5,alignItems:"center",flexWrap:"wrap"}}>
-                        {datos.variantes && datos.variantes.length > 1 && (
-                          <select style={S.selectSm}
-                            value={varSel[nombre]||datos.variantes[0]}
-                            onChange={e=>setVarSel(prev=>({...prev,[nombre]:e.target.value}))}>
-                            {datos.variantes.map(v=>(
-                              <option key={v} value={v}>{v} — {fmt(getPrecio(datos,v))}</option>
-                            ))}
-                          </select>
-                        )}
-                        <button style={S.modalAddBtn} onClick={()=>agregarExtra(nombre,datos)}>
-                          + {fmt(getPrecio(datos, varSel[nombre]||datos.variantes?.[0]))}
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                {carritoExtra.length > 0 && (
-                  <div style={{marginTop:10,background:"#111",padding:10,borderRadius:8}}>
-                    <b>Por agregar:</b>
-                    {carritoExtra.map((i,idx)=>(
-                      <div key={idx} style={{fontSize:12,color:"#ccc",padding:"2px 0"}}>{i.icon} {i.nombre} — {fmt(i.subtotal)}</div>
-                    ))}
-                    <div style={{marginTop:6,fontWeight:800,color:"#E85D04"}}>
-                      Extra: {fmt(carritoExtra.reduce((s,i)=>s+i.subtotal,0))}
-                    </div>
-                  </div>
-                )}
-                <div style={{display:"flex",gap:8,marginTop:12}}>
-                  <button style={{...S.btn,background:"#06D6A0",flex:2}} onClick={confirmar} disabled={carritoExtra.length===0}>✅ Confirmar</button>
-                  <button style={{...S.btn,background:"#555",flex:1}} onClick={()=>{setPedidoSelec(null);setCarritoExtra([])}}>✕ Cerrar</button>
-                </div>
+        <div style={M.body}>
+          {/* Variante principal */}
+          {d.variantes && d.variantes.length > 0 && (
+            <div style={M.section}>
+              <div style={M.sectionTitle}>
+                {d.categoria==="bebida" ? "🥤 Presentación" : "🍽️ Tipo"}
               </div>
-            </div>
-          )}
-
-          <div style={S.kanban}>
-            {cols.map(col => (
-              <div key={col.k} style={S.kCol}>
-                <div style={{...S.kHead,borderBottom:`3px solid ${col.c}`,color:col.c}}>{col.l}</div>
-                {pedidos.filter(p=>p.estado===col.k).map(p=>(
-                  <div key={p.id} style={{...S.card,...(p.actualizado?{border:"2px solid #E85D04"}:{})}}>
-                    <div style={S.cardTop}>
-                      <b>#{String(p.ts||"").slice(-4)}</b> — {p.mesa||"Sin mesa"}<br/>
-                      <small style={{color:"#aaa"}}>{p.hora}{p.actualizado?` · act. ${p.actualizado}`:""} · {fmt(p.total)}</small>
-                    </div>
-                    <div style={S.itemsList}>
-                      {(p.items||[]).map((item,i)=>(
-                        <div key={i} style={{fontSize:12,color:"#ccc",padding:"1px 0"}}>{item.icon} {item.nombre} ×{item.cantidad}</div>
-                      ))}
-                    </div>
-                    <div style={S.cardAcc}>
-                      {col.acc.map(a=>(
-                        <button key={a.e} style={{...S.accBtn,background:a.c}} onClick={()=>onUpdate(p.id,a.e)}>{a.l}</button>
-                      ))}
-                      {(col.k==="pendiente"||col.k==="en_proceso") && (
-                        <button style={{...S.accBtn,background:"#9D4EDD"}} onClick={()=>setPedidoSelec(p)}>➕</button>
-                      )}
-                      {col.k==="pendiente" && (
-                        <button style={{...S.accBtn,background:"#EF233C"}} onClick={()=>onCancelar(p.id)}>✕</button>
-                      )}
-                    </div>
-                  </div>
+              <div style={M.chipRow}>
+                {d.variantes.map(v => (
+                  <button key={v} style={{...M.chip,...(variante===v?M.chipOn:{})}} onClick={()=>setVariante(v)}>
+                    {v} {d.precios?.[v] ? `· ${fmt(d.precios[v])}` : ""}
+                  </button>
                 ))}
               </div>
-            ))}
-          </div>
-        </div>
-      );
-    }
-
-    // ═══════════════════════════════════════
-    // PEDIDO
-    // ═══════════════════════════════════════
-    function Pedido({ onAdd, menu }) {
-      const [carrito, setCarrito] = useState([]);
-      const [mesa, setMesa]       = useState("");
-      const [varSel, setVarSel]   = useState({});
-      const total = carrito.reduce((s,i)=>s+(i.subtotal||0),0);
-
-      const agregar = (nombre, datos) => {
-        const variante = varSel[nombre] || (datos.variantes&&datos.variantes[0]) || null;
-        const precio   = getPrecio(datos, variante);
-        const label    = variante ? `${nombre} (${variante})` : nombre;
-        setCarrito(prev=>[...prev,{nombre:label,cantidad:1,subtotal:precio,icon:datos.icon}]);
-      };
-
-      const renderGrid = (items) => (
-        <div style={S.menuGrid}>
-          {items.map(([n,d])=>(
-            <div key={n} style={{...S.mCard,borderTop:`4px solid ${d.color}`}}>
-              <div style={{fontSize:26}}>{d.icon}</div>
-              <div style={{fontWeight:700,fontSize:13,margin:"4px 0"}}>{n}</div>
-              {d.variantes && d.variantes.length > 0 && (
-                <select style={S.select}
-                  value={varSel[n]||d.variantes[0]}
-                  onChange={e=>setVarSel(prev=>({...prev,[n]:e.target.value}))}>
-                  {d.variantes.map(v=>(
-                    <option key={v} value={v}>{v} — {fmt(getPrecio(d,v))}</option>
-                  ))}
-                </select>
-              )}
-              <div style={{fontSize:12,color:"#aaa",margin:"3px 0"}}>{fmt(getPrecio(d,varSel[n]||d.variantes?.[0]))}</div>
-              <button style={{...S.addBtn,background:d.color}} onClick={()=>agregar(n,d)}>+ Agregar</button>
-            </div>
-          ))}
-        </div>
-      );
-
-      return (
-        <div style={{paddingBottom:100}}>
-          <input style={S.mesaInput} placeholder="Mesa / Nombre del cliente" value={mesa} onChange={e=>setMesa(e.target.value)}/>
-          <div style={S.secTitle}>🍽️ Comida</div>
-          {renderGrid(Object.entries(menu).filter(([,d])=>d.categoria==="comida"))}
-          <div style={S.secTitle}>🥤 Bebidas</div>
-          {renderGrid(Object.entries(menu).filter(([,d])=>d.categoria==="bebida"))}
-          {carrito.length > 0 && (
-            <div style={S.carritoPanel}>
-              <div style={{fontWeight:800,marginBottom:8,color:"#E85D04"}}>🛒 Carrito</div>
-              {carrito.map((item,i)=>(
-                <div key={i} style={S.carritoRow}>
-                  <span>{item.icon} {item.nombre}</span>
-                  <span style={{display:"flex",alignItems:"center",gap:8}}>
-                    {fmt(item.subtotal)}
-                    <button style={S.removeBtn} onClick={()=>setCarrito(prev=>prev.filter((_,j)=>j!==i))}>✕</button>
-                  </span>
-                </div>
-              ))}
-              <div style={{borderTop:"1px solid #333",marginTop:8,paddingTop:8,fontWeight:800,fontSize:16}}>Total: {fmt(total)}</div>
-              <button style={S.fab} onClick={()=>{onAdd({items:carrito,mesa,total});setCarrito([]);setMesa("");}}>
-                🚀 Enviar Pedido ({fmt(total)})
-              </button>
             </div>
           )}
-        </div>
-      );
-    }
 
-    // ═══════════════════════════════════════
-    // LOGIN
-    // ═══════════════════════════════════════
-    function Login({ onLogin }) {
-      const [pass, setPass]   = useState("");
-      const [error, setError] = useState(false);
-      const intentar = () => {
-        if (pass === ADMIN_PASSWORD) { onLogin(true); }
-        else { setError(true); setTimeout(()=>setError(false),2000); }
-      };
-      return (
-        <div style={S.loginWrap}>
-          <div style={S.loginBox}>
-            <div style={{fontSize:40,marginBottom:8}}>🔐</div>
-            <h3 style={{color:"#E85D04",margin:"0 0 16px"}}>Acceso Admin</h3>
-            <input
-              type="password"
-              style={{...S.loginInput,...(error?{border:"2px solid #EF233C"}:{})}}
-              placeholder="Contraseña"
-              value={pass}
-              onChange={e=>setPass(e.target.value)}
-              onKeyDown={e=>e.key==="Enter"&&intentar()}
-            />
-            {error && <div style={{color:"#EF233C",fontSize:13,marginBottom:8}}>❌ Contraseña incorrecta</div>}
-            <button style={S.loginBtn} onClick={intentar}>Entrar</button>
-          </div>
-        </div>
-      );
-    }
-
-    // ═══════════════════════════════════════
-    // REPORTES
-    // ═══════════════════════════════════════
-    function Reportes({ pedidos }) {
-      const hoy     = getTodayKey();
-      const validos = pedidos.filter(p=>p.estado!=="cancelado");
-      const hoyPeds = validos.filter(p=>p.fecha===hoy);
-      return (
-        <div style={S.rWrap}>
-          <h3 style={{color:"#E85D04"}}>📊 Reportes</h3>
-          <div style={{display:"flex",gap:12,flexWrap:"wrap",marginBottom:20}}>
-            {[
-              {n:fmt(hoyPeds.reduce((s,p)=>s+(p.total||0),0)), l:"Ventas hoy"},
-              {n:fmt(validos.reduce((s,p)=>s+(p.total||0),0)), l:"Ventas totales"},
-              {n:hoyPeds.length,                                l:"Pedidos hoy"},
-              {n:pedidos.filter(p=>p.estado==="cancelado"&&p.fecha===hoy).length, l:"Cancelados hoy"},
-            ].map((s,i)=>(
-              <div key={i} style={S.statCard}>
-                <div style={S.statNum}>{s.n}</div>
-                <div style={S.statLbl}>{s.l}</div>
+          {/* Relleno (solo comida que lo tiene) */}
+          {d.rellenos && (
+            <div style={M.section}>
+              <div style={M.sectionTitle}>🥩 Relleno</div>
+              <div style={M.chipRow}>
+                {d.rellenos.map(r => (
+                  <button key={r} style={{...M.chip,...(relleno===r?M.chipOn:{})}} onClick={()=>setRelleno(r)}>{r}</button>
+                ))}
               </div>
-            ))}
-          </div>
-          <h4 style={{color:"#ccc",margin:"0 0 10px"}}>Últimos 20 pedidos</h4>
-          {pedidos.slice(0,20).map(p=>(
-            <div key={p.id} style={{...S.card,marginBottom:6,fontSize:13}}>
-              <b>#{String(p.ts||"").slice(-4)}</b> — {p.mesa||"Sin mesa"} — {p.fecha} {p.hora} — {fmt(p.total)} —{" "}
-              <span style={{color:p.estado==="cancelado"?"#EF233C":"#06D6A0"}}>{p.estado}</span>
             </div>
+          )}
+
+          {/* Sabor (aguas, atole) */}
+          {d.sabores && (
+            <div style={M.section}>
+              <div style={M.sectionTitle}>🍓 Sabor</div>
+              <div style={M.chipRow}>
+                {d.sabores.map(s => (
+                  <button key={s} style={{...M.chip,...(sabor===s?M.chipOn:{})}} onClick={()=>setSabor(s)}>{s}</button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Extras (selección múltiple) */}
+          {d.extras && (
+            <div style={M.section}>
+              <div style={M.sectionTitle}>➕ Extras <span style={{fontSize:11,color:"#888",fontWeight:400}}>(puedes elegir varios)</span></div>
+              <div style={M.chipRow}>
+                {d.extras.map(ex => (
+                  <button key={ex} style={{...M.chip,...(extras.includes(ex)?M.chipOn:{})}} onClick={()=>toggleExtra(ex)}>{ex}</button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Nota especial */}
+          <div style={M.section}>
+            <div style={M.sectionTitle}>📝 Nota especial <span style={{fontSize:11,color:"#888",fontWeight:400}}>(opcional)</span></div>
+            <input
+              style={M.notaInput}
+              placeholder="Ej: sin cebolla, extra picoso…"
+              value={nota}
+              onChange={e=>setNota(e.target.value)}
+            />
+          </div>
+
+          {/* Cantidad */}
+          <div style={M.section}>
+            <div style={M.sectionTitle}>🔢 Cantidad</div>
+            <div style={{display:"flex",alignItems:"center",gap:14}}>
+              <button style={M.qBtn} onClick={()=>setCantidad(c=>Math.max(1,c-1))}>−</button>
+              <span style={{fontSize:22,fontWeight:800,minWidth:30,textAlign:"center"}}>{cantidad}</span>
+              <button style={M.qBtn} onClick={()=>setCantidad(c=>c+1)}>+</button>
+              <span style={{marginLeft:"auto",fontSize:16,fontWeight:800,color:"#E85D04"}}>{fmt(subtotal)}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Resumen + confirmar */}
+        <div style={M.footer}>
+          <div style={{fontSize:12,color:"#888",marginBottom:8,lineHeight:1.5}}>{descripcion}</div>
+          <button style={M.confirmBtn} onClick={()=>onConfirmar({ nombre:descripcion, cantidad, subtotal, icon:d.icon })}>
+            ✅ Agregar al pedido · {fmt(subtotal)}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════
+// APP PRINCIPAL
+// ══════════════════════════════════════════════════════
+function App() {
+  const [view,     setView]     = useState("central");
+  const [pedidos,  setPedidos]  = useState({});
+  const [menu,     setMenu]     = useState(MENU_DEFAULT);
+  const [notif,    setNotif]    = useState(null);
+  const [isAdmin,  setIsAdmin]  = useState(false);
+  const [fbReady,  setFbReady]  = useState(false);
+
+  useEffect(() => {
+    db.ref("pedidos").on("value", snap => setPedidos(snap.val() || {}));
+    db.ref("menu").on("value", snap => {
+      const val = snap.val();
+      if (val) setMenu(val); else db.ref("menu").set(MENU_DEFAULT);
+    });
+    setFbReady(true);
+  }, []);
+
+  const showNotif = msg => { setNotif(msg); setTimeout(()=>setNotif(null), 2500); };
+
+  const addPedido = useCallback(pedido => {
+    db.ref("pedidos").push({
+      ...pedido,
+      fecha: getTodayKey(),
+      hora: new Date().toLocaleTimeString("es-MX",{hour:"2-digit",minute:"2-digit"}),
+      estado: "pendiente",
+      ts: Date.now()
+    });
+    showNotif("✅ Pedido enviado a cocina");
+  }, []);
+
+  const agregarAlPedido = useCallback((id, pedidoActual, itemsNuevos) => {
+    const items = [...(pedidoActual.items||[]), ...itemsNuevos];
+    const total = items.reduce((s,i)=>s+(i.subtotal||0),0);
+    db.ref(`pedidos/${id}`).update({
+      items, total, estado:"pendiente",
+      actualizado: new Date().toLocaleTimeString("es-MX",{hour:"2-digit",minute:"2-digit"})
+    });
+    showNotif("✅ Productos añadidos — pedido regresó a Pendientes");
+  }, []);
+
+  const updateEstado = (id, estado) => db.ref(`pedidos/${id}`).update({ estado });
+  const cancelar     = id => db.ref(`pedidos/${id}`).update({ estado:"cancelado" });
+
+  const pedidosArr = Object.entries(pedidos).map(([id,p])=>({...p,id})).sort((a,b)=>(b.ts||0)-(a.ts||0));
+  const hoy = pedidosArr.filter(p=>p.fecha===getTodayKey());
+
+  const navItems = [{k:"central",l:"📺 Central"},{k:"pedido",l:"📱 Pedido"},{k:"reportes",l:"📊 Reportes"},{k:"admin",l:"⚙️ Admin"}];
+
+  return (
+    <div style={S.root}>
+      {notif && <div style={S.toast}>{notif}</div>}
+      <nav style={S.nav}>
+        <div style={S.brand}>
+          <span style={{fontSize:24}}>🌮</span>
+          <span style={S.brandText}>MiTaquería</span>
+          {fbReady && <span style={S.online}>● EN VIVO</span>}
+        </div>
+        <div style={S.navBtns}>
+          {navItems.map(v=>(
+            <button key={v.k}
+              style={{...S.navBtn,...(view===v.k?S.navBtnOn:{})}}
+              onClick={()=>{ if((v.k==="reportes"||v.k==="admin")&&!isAdmin) setView("login"); else setView(v.k); }}>
+              {v.l}
+            </button>
           ))}
         </div>
-      );
-    }
+      </nav>
+      <main style={S.main}>
+        {view==="central"  && <Central  pedidos={hoy} onUpdate={updateEstado} onCancelar={cancelar} onAgregarAl={agregarAlPedido} menu={menu}/>}
+        {view==="pedido"   && <Pedido   onAdd={addPedido} menu={menu}/>}
+        {view==="reportes" && isAdmin && <Reportes pedidos={pedidosArr}/>}
+        {view==="admin"    && isAdmin && <AdminView menu={menu}/>}
+        {view==="login"    && <Login onLogin={ok=>{ if(ok){ setIsAdmin(true); setView("reportes"); }}}/>}
+      </main>
+    </div>
+  );
+}
 
-    // ═══════════════════════════════════════
-    // ADMIN
-    // ═══════════════════════════════════════
-    function AdminView({ menu }) {
-      return (
-        <div style={S.rWrap}>
-          <h3 style={{color:"#E85D04"}}>⚙️ Menú actual en Firebase</h3>
-          <div style={{display:"flex",flexWrap:"wrap",gap:10}}>
-            {Object.entries(menu).map(([n,d])=>(
-              <div key={n} style={{...S.mCard,borderTop:`4px solid ${d.color}`,minWidth:130,textAlign:"center"}}>
-                <div style={{fontSize:26}}>{d.icon}</div>
-                <div style={{fontWeight:700,fontSize:13}}>{n}</div>
-                <div style={{fontSize:11,color:"#aaa"}}>{d.categoria}</div>
+// ══════════════════════════════════════════════════════
+// CENTRAL — kanban
+// ══════════════════════════════════════════════════════
+function Central({ pedidos, onUpdate, onCancelar, onAgregarAl, menu }) {
+  const [pedidoSelec,   setPedidoSelec]   = useState(null);
+  const [productoModal, setProductoModal] = useState(null); // {nombre, datos}
+  const [carritoExtra,  setCarritoExtra]  = useState([]);
+
+  const cols = [
+    { k:"pendiente",  l:"⏳ Pendientes", c:"#FFBA08", acc:[{l:"▶ Preparar",e:"en_proceso",c:"#3A86FF"}] },
+    { k:"en_proceso", l:"👨‍🍳 En Proceso", c:"#3A86FF", acc:[{l:"✅ Listo",   e:"listo",    c:"#06D6A0"}] },
+    { k:"listo",      l:"✅ Listos",      c:"#06D6A0", acc:[{l:"🤝 Entregar",e:"entregado",c:"#888"}]    },
+    { k:"entregado",  l:"🤝 Entregados",  c:"#888",    acc:[] },
+  ];
+
+  const confirmarExtra = item => {
+    setCarritoExtra(prev=>[...prev, item]);
+    setProductoModal(null);
+  };
+
+  const confirmarAgregarAl = () => {
+    if (!pedidoSelec || carritoExtra.length===0) return;
+    onAgregarAl(pedidoSelec.id, pedidoSelec, carritoExtra);
+    setPedidoSelec(null);
+    setCarritoExtra([]);
+  };
+
+  return (
+    <div>
+      <div style={S.centralDate}>📅 {getToday()}</div>
+
+      {/* Modal selector de producto para agregar a pedido existente */}
+      {pedidoSelec && !productoModal && (
+        <div style={M.overlay} onClick={e=>{ if(e.target===e.currentTarget){ setPedidoSelec(null); setCarritoExtra([]); }}}>
+          <div style={M.box}>
+            <div style={M.header}>
+              <div>
+                <div style={{fontWeight:800,fontSize:16,color:"#E85D04"}}>➕ Agregar a pedido</div>
+                <div style={{fontSize:13,color:"#aaa"}}>#{String(pedidoSelec.ts).slice(-4)} — {pedidoSelec.mesa||"Sin mesa"}</div>
+              </div>
+              <button style={M.closeBtn} onClick={()=>{ setPedidoSelec(null); setCarritoExtra([]); }}>✕</button>
+            </div>
+            <div style={{...M.body, maxHeight:"50vh", overflowY:"auto"}}>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(130px,1fr))",gap:8}}>
+                {Object.entries(menu).map(([nombre, datos])=>(
+                  <button key={nombre}
+                    style={{background:"#242424",border:`2px solid ${datos.color}`,borderRadius:10,padding:"10px 8px",color:"#fff",cursor:"pointer",textAlign:"center"}}
+                    onClick={()=>setProductoModal({nombre,datos})}>
+                    <div style={{fontSize:24}}>{datos.icon}</div>
+                    <div style={{fontSize:12,fontWeight:700,marginTop:4}}>{nombre}</div>
+                    <div style={{fontSize:11,color:"#aaa"}}>{fmt(getPrecio(datos,datos.variantes?.[0]))}</div>
+                  </button>
+                ))}
+              </div>
+              {carritoExtra.length > 0 && (
+                <div style={{marginTop:12,background:"#111",padding:10,borderRadius:8}}>
+                  <div style={{fontWeight:700,marginBottom:6,color:"#E85D04"}}>Por agregar:</div>
+                  {carritoExtra.map((i,idx)=>(
+                    <div key={idx} style={{display:"flex",justifyContent:"space-between",fontSize:13,padding:"2px 0",color:"#ccc"}}>
+                      <span>{i.icon} {i.nombre}</span>
+                      <span>{fmt(i.subtotal)}</span>
+                    </div>
+                  ))}
+                  <div style={{borderTop:"1px solid #333",marginTop:6,paddingTop:6,fontWeight:800,color:"#E85D04",textAlign:"right"}}>
+                    Extra: {fmt(carritoExtra.reduce((s,i)=>s+i.subtotal,0))}
+                  </div>
+                </div>
+              )}
+            </div>
+            <div style={M.footer}>
+              <button style={{...M.confirmBtn, opacity: carritoExtra.length===0?0.4:1}}
+                disabled={carritoExtra.length===0} onClick={confirmarAgregarAl}>
+                ✅ Confirmar y enviar a cocina
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal personalización del producto extra */}
+      {productoModal && (
+        <ModalProducto
+          nombre={productoModal.nombre}
+          producto={productoModal.datos}
+          onConfirmar={confirmarExtra}
+          onCerrar={()=>setProductoModal(null)}
+        />
+      )}
+
+      <div style={S.kanban}>
+        {cols.map(col=>(
+          <div key={col.k} style={S.kCol}>
+            <div style={{...S.kHead,borderBottom:`3px solid ${col.c}`,color:col.c}}>{col.l}</div>
+            {pedidos.filter(p=>p.estado===col.k).map(p=>(
+              <div key={p.id} style={{...S.card,...(p.actualizado?{border:"2px solid #E85D04"}:{})}}>
+                <div style={S.cardTop}>
+                  <b>#{String(p.ts||"").slice(-4)}</b> — {p.mesa||"Sin mesa"}<br/>
+                  <small style={{color:"#aaa"}}>{p.hora}{p.actualizado?` · act. ${p.actualizado}`:""} · {fmt(p.total)}</small>
+                </div>
+                <div style={S.itemsList}>
+                  {(p.items||[]).map((item,i)=>(
+                    <div key={i} style={{fontSize:12,color:"#ccc",padding:"2px 0",lineHeight:1.4}}>
+                      {item.icon} {item.nombre} <span style={{color:"#E85D04"}}>×{item.cantidad}</span>
+                    </div>
+                  ))}
+                </div>
+                <div style={S.cardAcc}>
+                  {col.acc.map(a=>(
+                    <button key={a.e} style={{...S.accBtn,background:a.c}} onClick={()=>onUpdate(p.id,a.e)}>{a.l}</button>
+                  ))}
+                  {(col.k==="pendiente"||col.k==="en_proceso") && (
+                    <button style={{...S.accBtn,background:"#9D4EDD"}} onClick={()=>{ setPedidoSelec(p); setCarritoExtra([]); }}>➕</button>
+                  )}
+                  {col.k==="pendiente" && (
+                    <button style={{...S.accBtn,background:"#EF233C"}} onClick={()=>onCancelar(p.id)}>✕</button>
+                  )}
+                </div>
               </div>
             ))}
           </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════
+// PEDIDO
+// ══════════════════════════════════════════════════════
+function Pedido({ onAdd, menu }) {
+  const [carrito,       setCarrito]       = useState([]);
+  const [mesa,          setMesa]          = useState("");
+  const [productoModal, setProductoModal] = useState(null);
+  const total = carrito.reduce((s,i)=>s+(i.subtotal||0),0);
+
+  const confirmar = item => { setCarrito(prev=>[...prev,item]); setProductoModal(null); };
+
+  const renderGrid = items => (
+    <div style={S.menuGrid}>
+      {items.map(([n,d])=>(
+        <button key={n}
+          style={{...S.mCard, borderTop:`4px solid ${d.color}`, cursor:"pointer"}}
+          onClick={()=>setProductoModal({nombre:n,datos:d})}>
+          <div style={{fontSize:30}}>{d.icon}</div>
+          <div style={{fontWeight:700,fontSize:13,margin:"5px 0 3px"}}>{n}</div>
+          <div style={{fontSize:11,color:"#aaa"}}>
+            {d.precio ? fmt(d.precio) : d.precios ? `desde ${fmt(Math.min(...Object.values(d.precios)))}` : ""}
+            {d.unidad ? ` ${d.unidad}` : ""}
+          </div>
+          <div style={{fontSize:10,color:"#666",marginTop:3}}>
+            {[d.variantes?.length && `${d.variantes.length} opciones`, d.extras?.length && `${d.extras.length} extras`].filter(Boolean).join(" · ")}
+          </div>
+        </button>
+      ))}
+    </div>
+  );
+
+  return (
+    <div style={{paddingBottom:120}}>
+      {productoModal && (
+        <ModalProducto
+          nombre={productoModal.nombre}
+          producto={productoModal.datos}
+          onConfirmar={confirmar}
+          onCerrar={()=>setProductoModal(null)}
+        />
+      )}
+
+      <input style={S.mesaInput} placeholder="🪑 Mesa / Nombre del cliente" value={mesa} onChange={e=>setMesa(e.target.value)}/>
+
+      <div style={S.secTitle}>🍽️ Comida</div>
+      {renderGrid(Object.entries(menu).filter(([,d])=>d.categoria==="comida"))}
+
+      <div style={S.secTitle}>🥤 Bebidas</div>
+      {renderGrid(Object.entries(menu).filter(([,d])=>d.categoria==="bebida"))}
+
+      {carrito.length > 0 && (
+        <div style={S.carritoPanel}>
+          <div style={{fontWeight:800,marginBottom:10,color:"#E85D04",fontSize:15}}>🛒 Carrito</div>
+          {carrito.map((item,i)=>(
+            <div key={i} style={S.carritoRow}>
+              <span style={{flex:1,fontSize:13}}>{item.icon} {item.nombre}</span>
+              <span style={{fontSize:13,marginRight:10,color:"#E85D04",fontWeight:700}}>{fmt(item.subtotal)}</span>
+              <button style={S.removeBtn} onClick={()=>setCarrito(prev=>prev.filter((_,j)=>j!==i))}>✕</button>
+            </div>
+          ))}
+          <div style={{borderTop:"1px solid #333",marginTop:10,paddingTop:10,fontWeight:800,fontSize:17,textAlign:"right"}}>
+            Total: {fmt(total)}
+          </div>
+          <button style={S.fab}
+            disabled={!mesa.trim()}
+            onClick={()=>{ if(!mesa.trim()){alert("Escribe mesa o nombre"); return;} onAdd({items:carrito,mesa,total}); setCarrito([]); setMesa(""); }}>
+            🚀 Enviar Pedido · {fmt(total)}
+          </button>
         </div>
-      );
-    }
+      )}
+    </div>
+  );
+}
 
-    // ═══════════════════════════════════════
-    // ESTILOS
-    // ═══════════════════════════════════════
-    const S = {
-      root:{ minHeight:"100vh",background:"#0F0F0F",color:"#F0EBE3" },
-      toast:{ position:"fixed",top:20,left:"50%",transform:"translateX(-50%)",background:"#06D6A0",color:"#0F0F0F",padding:"10px 22px",borderRadius:20,zIndex:9999,fontWeight:700,whiteSpace:"nowrap" },
-      nav:{ display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 16px",height:56,background:"#1A1A1A",borderBottom:"2px solid #E85D04",flexWrap:"wrap",gap:6 },
-      brand:{ display:"flex",alignItems:"center",gap:8 },
-      brandText:{ fontSize:18,fontWeight:800,color:"#E85D04" },
-      online:{ fontSize:11,color:"#06D6A0",marginLeft:4 },
-      navBtns:{ display:"flex",gap:4,flexWrap:"wrap" },
-      navBtn:{ padding:"6px 10px",borderRadius:20,border:"1px solid #333",background:"transparent",color:"#aaa",fontSize:12,cursor:"pointer" },
-      navBtnOn:{ background:"#E85D04",color:"#fff",border:"1px solid #E85D04" },
-      main:{ padding:14 },
-      centralDate:{ textAlign:"center",marginBottom:12,color:"#888",fontSize:13 },
-      kanban:{ display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:12 },
-      kCol:{ background:"#1A1A1A",padding:10,borderRadius:10,minHeight:280 },
-      kHead:{ fontWeight:800,marginBottom:10,textAlign:"center",paddingBottom:8,fontSize:13 },
-      card:{ background:"#242424",padding:10,borderRadius:8,marginBottom:8,border:"1px solid #2e2e2e" },
-      cardTop:{ fontSize:13,lineHeight:1.7 },
-      itemsList:{ borderTop:"1px solid #333",margin:"6px 0 4px",paddingTop:6 },
-      cardAcc:{ display:"flex",gap:5,marginTop:6 },
-      accBtn:{ flex:1,padding:"5px 3px",border:"none",borderRadius:6,color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer" },
-      overlay:{ position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:16 },
-      modal:{ background:"#1A1A1A",borderRadius:14,padding:18,width:"100%",maxWidth:480,maxHeight:"90vh",overflowY:"auto",border:"2px solid #E85D04" },
-      modalRow:{ display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 0",borderBottom:"1px solid #222",flexWrap:"wrap",gap:6 },
-      modalAddBtn:{ background:"#E85D04",border:"none",color:"#fff",borderRadius:6,padding:"4px 10px",fontSize:12,cursor:"pointer",fontWeight:700 },
-      selectSm:{ background:"#111",border:"1px solid #444",color:"#fff",borderRadius:6,padding:"3px 6px",fontSize:11 },
-      btn:{ padding:"10px 0",border:"none",borderRadius:8,color:"#fff",fontWeight:700,cursor:"pointer",fontSize:14 },
-      secTitle:{ fontSize:17,fontWeight:800,margin:"18px 0 10px",color:"#E85D04" },
-      mesaInput:{ width:"100%",background:"#1A1A1A",border:"1px solid #444",color:"#fff",padding:12,borderRadius:10,marginBottom:14,fontSize:15 },
-      menuGrid:{ display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))",gap:10 },
-      mCard:{ background:"#1A1A1A",borderRadius:12,padding:12,border:"1px solid #222",color:"#fff",textAlign:"center" },
-      select:{ width:"100%",background:"#111",border:"1px solid #444",color:"#fff",borderRadius:6,padding:"4px 6px",fontSize:12,marginBottom:3 },
-      addBtn:{ width:"100%",border:"none",borderRadius:8,padding:"7px 0",color:"#fff",fontWeight:700,cursor:"pointer",fontSize:13,marginTop:4 },
-      carritoPanel:{ background:"#1A1A1A",borderRadius:12,padding:14,marginTop:16,border:"1px solid #333" },
-      carritoRow:{ display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 0",fontSize:14 },
-      removeBtn:{ background:"#EF233C",border:"none",color:"#fff",borderRadius:"50%",width:20,height:20,cursor:"pointer",fontSize:10,lineHeight:"20px",padding:0 },
-      fab:{ display:"block",width:"100%",marginTop:12,background:"#E85D04",color:"#fff",padding:"14px 0",borderRadius:12,border:"none",fontWeight:800,fontSize:15,cursor:"pointer" },
-      loginWrap:{ display:"flex",justifyContent:"center",paddingTop:60 },
-      loginBox:{ background:"#1A1A1A",padding:30,borderRadius:16,textAlign:"center",width:300,border:"1px solid #333" },
-      loginInput:{ display:"block",width:"100%",margin:"0 0 10px",padding:12,background:"#000",color:"#fff",border:"1px solid #333",borderRadius:8,fontSize:15 },
-      loginBtn:{ background:"#E85D04",color:"#fff",border:"none",padding:"12px 0",width:"100%",borderRadius:8,fontWeight:700,fontSize:15,cursor:"pointer" },
-      rWrap:{ padding:16 },
-      statCard:{ background:"#1A1A1A",borderRadius:12,padding:"14px 20px",textAlign:"center",border:"1px solid #333",minWidth:120 },
-      statNum:{ fontSize:26,fontWeight:800,color:"#E85D04" },
-      statLbl:{ fontSize:12,color:"#aaa",marginTop:4 },
-    };
+// ══════════════════════════════════════════════════════
+// LOGIN
+// ══════════════════════════════════════════════════════
+function Login({ onLogin }) {
+  const [pass, setPass]   = useState("");
+  const [error, setError] = useState(false);
+  const intentar = () => {
+    if (pass===ADMIN_PASSWORD) onLogin(true);
+    else { setError(true); setTimeout(()=>setError(false),2000); }
+  };
+  return (
+    <div style={S.loginWrap}>
+      <div style={S.loginBox}>
+        <div style={{fontSize:44,marginBottom:8}}>🔐</div>
+        <h3 style={{color:"#E85D04",margin:"0 0 18px"}}>Acceso Admin</h3>
+        <input type="password" style={{...S.loginInput,...(error?{border:"2px solid #EF233C"}:{})}}
+          placeholder="Contraseña" value={pass}
+          onChange={e=>setPass(e.target.value)} onKeyDown={e=>e.key==="Enter"&&intentar()}/>
+        {error && <div style={{color:"#EF233C",fontSize:13,marginBottom:8}}>❌ Contraseña incorrecta</div>}
+        <button style={S.loginBtn} onClick={intentar}>Entrar</button>
+      </div>
+    </div>
+  );
+}
 
-    ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
-  </script>
+// ══════════════════════════════════════════════════════
+// REPORTES
+// ══════════════════════════════════════════════════════
+function Reportes({ pedidos }) {
+  const hoy     = getTodayKey();
+  const validos = pedidos.filter(p=>p.estado!=="cancelado");
+  const hoyP    = validos.filter(p=>p.fecha===hoy);
+  return (
+    <div style={S.rWrap}>
+      <h3 style={{color:"#E85D04"}}>📊 Reportes</h3>
+      <div style={{display:"flex",gap:12,flexWrap:"wrap",marginBottom:20}}>
+        {[
+          {n:fmt(hoyP.reduce((s,p)=>s+(p.total||0),0)), l:"Ventas hoy"},
+          {n:fmt(validos.reduce((s,p)=>s+(p.total||0),0)), l:"Ventas totales"},
+          {n:hoyP.length, l:"Pedidos hoy"},
+          {n:pedidos.filter(p=>p.estado==="cancelado"&&p.fecha===hoy).length, l:"Cancelados hoy"},
+        ].map((s,i)=>(
+          <div key={i} style={S.statCard}>
+            <div style={S.statNum}>{s.n}</div>
+            <div style={S.statLbl}>{s.l}</div>
+          </div>
+        ))}
+      </div>
+      <h4 style={{color:"#ccc",margin:"0 0 10px"}}>Últimos 20 pedidos</h4>
+      {pedidos.slice(0,20).map(p=>(
+        <div key={p.id} style={{...S.card,marginBottom:6,fontSize:13}}>
+          <b>#{String(p.ts||"").slice(-4)}</b> — {p.mesa||"Sin mesa"} — {p.fecha} {p.hora} — {fmt(p.total)} —{" "}
+          <span style={{color:p.estado==="cancelado"?"#EF233C":"#06D6A0"}}>{p.estado}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════
+// ADMIN
+// ══════════════════════════════════════════════════════
+function AdminView({ menu }) {
+  return (
+    <div style={S.rWrap}>
+      <h3 style={{color:"#E85D04"}}>⚙️ Menú actual</h3>
+      <div style={{display:"flex",flexWrap:"wrap",gap:10}}>
+        {Object.entries(menu).map(([n,d])=>(
+          <div key={n} style={{...S.mCard,borderTop:`4px solid ${d.color}`,minWidth:120,textAlign:"center"}}>
+            <div style={{fontSize:26}}>{d.icon}</div>
+            <div style={{fontWeight:700,fontSize:13}}>{n}</div>
+            <div style={{fontSize:11,color:"#aaa"}}>{d.categoria}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════
+// ESTILOS GENERALES
+// ══════════════════════════════════════════════════════
+const S = {
+  root:{ minHeight:"100vh",background:"#0F0F0F",color:"#F0EBE3" },
+  toast:{ position:"fixed",top:16,left:"50%",transform:"translateX(-50%)",background:"#06D6A0",color:"#0F0F0F",padding:"10px 22px",borderRadius:20,zIndex:9999,fontWeight:700,whiteSpace:"nowrap",boxShadow:"0 4px 20px rgba(0,0,0,.5)" },
+  nav:{ display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 14px",height:54,background:"#1A1A1A",borderBottom:"2px solid #E85D04",flexWrap:"wrap",gap:6 },
+  brand:{ display:"flex",alignItems:"center",gap:8 },
+  brandText:{ fontSize:18,fontWeight:800,color:"#E85D04" },
+  online:{ fontSize:10,color:"#06D6A0",marginLeft:4 },
+  navBtns:{ display:"flex",gap:4,flexWrap:"wrap" },
+  navBtn:{ padding:"5px 10px",borderRadius:20,border:"1px solid #333",background:"transparent",color:"#aaa",fontSize:12,cursor:"pointer" },
+  navBtnOn:{ background:"#E85D04",color:"#fff",border:"1px solid #E85D04" },
+  main:{ padding:14 },
+  centralDate:{ textAlign:"center",marginBottom:12,color:"#666",fontSize:13 },
+  kanban:{ display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:12 },
+  kCol:{ background:"#1A1A1A",padding:10,borderRadius:10,minHeight:280 },
+  kHead:{ fontWeight:800,marginBottom:10,textAlign:"center",paddingBottom:8,fontSize:13 },
+  card:{ background:"#242424",padding:10,borderRadius:8,marginBottom:8,border:"1px solid #2e2e2e" },
+  cardTop:{ fontSize:13,lineHeight:1.7 },
+  itemsList:{ borderTop:"1px solid #333",margin:"6px 0 4px",paddingTop:6 },
+  cardAcc:{ display:"flex",gap:5,marginTop:6 },
+  accBtn:{ flex:1,padding:"5px 3px",border:"none",borderRadius:6,color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer" },
+  secTitle:{ fontSize:17,fontWeight:800,margin:"18px 0 10px",color:"#E85D04" },
+  mesaInput:{ width:"100%",background:"#1A1A1A",border:"1px solid #444",color:"#fff",padding:12,borderRadius:10,marginBottom:14,fontSize:15 },
+  menuGrid:{ display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(130px,1fr))",gap:10 },
+  mCard:{ background:"#1A1A1A",borderRadius:12,padding:12,border:"1px solid #222",color:"#fff",textAlign:"center" },
+  carritoPanel:{ background:"#1A1A1A",borderRadius:12,padding:14,marginTop:16,border:"1px solid #333" },
+  carritoRow:{ display:"flex",alignItems:"center",padding:"5px 0",borderBottom:"1px solid #222" },
+  removeBtn:{ background:"#EF233C",border:"none",color:"#fff",borderRadius:"50%",width:20,height:20,cursor:"pointer",fontSize:10,flexShrink:0 },
+  fab:{ display:"block",width:"100%",marginTop:12,background:"#E85D04",color:"#fff",padding:"14px 0",borderRadius:12,border:"none",fontWeight:800,fontSize:15,cursor:"pointer" },
+  loginWrap:{ display:"flex",justifyContent:"center",paddingTop:60 },
+  loginBox:{ background:"#1A1A1A",padding:30,borderRadius:16,textAlign:"center",width:300,border:"1px solid #333" },
+  loginInput:{ display:"block",width:"100%",margin:"0 0 10px",padding:12,background:"#000",color:"#fff",border:"1px solid #333",borderRadius:8,fontSize:15 },
+  loginBtn:{ background:"#E85D04",color:"#fff",border:"none",padding:"12px 0",width:"100%",borderRadius:8,fontWeight:700,fontSize:15,cursor:"pointer" },
+  rWrap:{ padding:16 },
+  statCard:{ background:"#1A1A1A",borderRadius:12,padding:"14px 20px",textAlign:"center",border:"1px solid #333",minWidth:120 },
+  statNum:{ fontSize:26,fontWeight:800,color:"#E85D04" },
+  statLbl:{ fontSize:12,color:"#aaa",marginTop:4 },
+};
+
+// ══════════════════════════════════════════════════════
+// ESTILOS DEL MODAL
+// ══════════════════════════════════════════════════════
+const M = {
+  overlay:{ position:"fixed",inset:0,background:"rgba(0,0,0,0.88)",zIndex:1000,display:"flex",alignItems:"flex-end",justifyContent:"center",padding:"0" },
+  box:{ background:"#1A1A1A",borderRadius:"20px 20px 0 0",width:"100%",maxWidth:520,maxHeight:"92vh",display:"flex",flexDirection:"column",border:"1px solid #333",borderBottom:"none" },
+  header:{ display:"flex",alignItems:"center",gap:12,padding:"16px 18px",borderBottom:"1px solid #2a2a2a",flexShrink:0 },
+  closeBtn:{ marginLeft:"auto",background:"#333",border:"none",color:"#fff",borderRadius:"50%",width:30,height:30,cursor:"pointer",fontSize:14,fontWeight:700 },
+  body:{ padding:"14px 18px",overflowY:"auto",flex:1 },
+  footer:{ padding:"12px 18px 20px",borderTop:"1px solid #2a2a2a",flexShrink:0,background:"#1A1A1A" },
+  section:{ marginBottom:18 },
+  sectionTitle:{ fontSize:13,fontWeight:700,color:"#aaa",marginBottom:8,textTransform:"uppercase",letterSpacing:"0.5px" },
+  chipRow:{ display:"flex",flexWrap:"wrap",gap:7 },
+  chip:{ padding:"6px 12px",borderRadius:20,border:"1px solid #444",background:"#242424",color:"#ccc",fontSize:13,cursor:"pointer",fontWeight:500 },
+  chipOn:{ background:"#E85D04",border:"1px solid #E85D04",color:"#fff",fontWeight:700 },
+  notaInput:{ width:"100%",background:"#111",border:"1px solid #444",color:"#fff",borderRadius:8,padding:"8px 12px",fontSize:13 },
+  qBtn:{ width:36,height:36,borderRadius:"50%",border:"2px solid #444",background:"#242424",color:"#fff",fontSize:20,cursor:"pointer",fontWeight:700,lineHeight:"1" },
+  confirmBtn:{ display:"block",width:"100%",background:"#E85D04",color:"#fff",border:"none",borderRadius:12,padding:"14px 0",fontWeight:800,fontSize:15,cursor:"pointer" },
+};
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
 </body>
 </html>
