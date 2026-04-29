@@ -47,6 +47,10 @@ const USUARIOS = {
   "admin":  { pass:"Angeles14", rol:"admin" },
 };
 const PRECIO_EXTRA_QUESO = 5;
+// Rellenos extra: chilaquiles cobra $6 por cada relleno adicional al primero,
+// gorditas cobra $5 por cada relleno (desde el primero)
+const PRECIO_RELLENO_CHILAQUILES = 6; // se cobra desde el 2do relleno
+const PRECIO_RELLENO_GORDITAS    = 5; // se cobra desde el 1er relleno
 
 // ══════════════════════════════════════════════════════
 // MENÚ DEFAULT
@@ -159,9 +163,17 @@ const getPrecio = (datos, variante) => {
   if (datos.precios && variante && datos.precios[variante] !== undefined) return datos.precios[variante];
   return datos.precio || 0;
 };
-const calcSubtotal = (precioBase, cantidad, extras=[]) => {
+const calcSubtotal = (precioBase, cantidad, extras=[], rellenos=[], nombreProducto="") => {
   const tieneExtraQueso = extras.some(e => e.includes("Extra Queso"));
-  return (precioBase + (tieneExtraQueso ? PRECIO_EXTRA_QUESO : 0)) * cantidad;
+  let cargoRellenos = 0;
+  if (nombreProducto === "Chilaquiles") {
+    // 1er relleno gratis, cada adicional cuesta $6
+    cargoRellenos = Math.max(0, rellenos.length - 1) * PRECIO_RELLENO_CHILAQUILES;
+  } else if (nombreProducto === "Gorditas") {
+    // cada relleno cuesta $5
+    cargoRellenos = rellenos.length * PRECIO_RELLENO_GORDITAS;
+  }
+  return (precioBase + (tieneExtraQueso ? PRECIO_EXTRA_QUESO : 0) + cargoRellenos) * cantidad;
 };
 
 // Obtener el siguiente ID consecutivo del día desde Firebase
@@ -275,7 +287,13 @@ function ModalProducto({ producto, nombre, onConfirmar, onCerrar }) {
   };
 
   const precioBase = getPrecio(d, variante);
-  const subtotal   = calcSubtotal(precioBase, cantidad, extras);
+  const subtotal   = calcSubtotal(precioBase, cantidad, extras, rellenos, nombre);
+  // Cargo extra por rellenos para mostrarlo al usuario
+  const cargoRellenosExtra = nombre === "Chilaquiles"
+    ? Math.max(0, rellenos.length - 1) * PRECIO_RELLENO_CHILAQUILES
+    : nombre === "Gorditas"
+    ? rellenos.length * PRECIO_RELLENO_GORDITAS
+    : 0;
   const partes     = [
     variante,
     rellenos.length ? rellenos.join(" + ") : null,
@@ -295,6 +313,7 @@ function ModalProducto({ producto, nombre, onConfirmar, onCerrar }) {
             <div style={{fontSize:13,color:"#E85D04",fontWeight:700}}>
               {fmt(precioBase)}{d.unidad?` ${d.unidad}`:""}
               {extras.some(e=>e.includes("Extra Queso")) && <span style={{color:"#FFBA08"}}> +$5 queso</span>}
+              {cargoRellenosExtra > 0 && <span style={{color:"#F4A261"}}> +${cargoRellenosExtra} rellenos</span>}
             </div>
           </div>
           <button style={M.closeBtn} onClick={onCerrar}>✕</button>
@@ -316,7 +335,8 @@ function ModalProducto({ producto, nombre, onConfirmar, onCerrar }) {
             <div style={M.section}>
               <div style={M.sectionTitle}>
                 🥩 Relleno
-                {d.multiRelleno && <span style={{fontSize:11,color:"#888",fontWeight:400,marginLeft:6}}>(puedes elegir varios)</span>}
+                {nombre==="Chilaquiles" && <span style={{fontSize:11,color:"#F4A261",fontWeight:500,marginLeft:6}}>(1ro gratis · +$6 c/u adicional)</span>}
+                {nombre==="Gorditas"    && <span style={{fontSize:11,color:"#F4A261",fontWeight:500,marginLeft:6}}>(+$5 por relleno)</span>}
               </div>
               <div style={M.chipRow}>
                 {d.rellenos.map(r=>(
@@ -643,22 +663,25 @@ function Central({ pedidos, onUpdate, onCancelar, onAgregarAl, onMarcarItem, men
                       const tipo         = partes[0] || null;
                       const extraQueso   = partes.find(p=>p.includes("Extra Queso")) || null;
                       const complementos = partes.filter(p=>p!==tipo && !p.includes("Extra Queso")).join(", ");
+                      const lineaPrincipal = [
+                        nombreBase,
+                        tipo,
+                        extraQueso,
+                        complementos || null
+                      ].filter(Boolean).join(" | ");
                       return (
-                      <div key={i} style={{padding:"4px 0",borderBottom:"1px solid #222",
-                        opacity:item.entregado?0.45:1,
+                      <div key={i} style={{padding:"5px 0",borderBottom:"1px solid #222",
+                        opacity:item.entregado?0.4:1,
                         textDecoration:item.entregado?"line-through":"none"}}>
-                        <div style={{display:"flex",alignItems:"center",gap:6}}>
-                          <span style={{fontSize:18,flexShrink:0}}>{item.icon}</span>
-                          <span style={{fontWeight:800,fontSize:13,color:item.entregado?"#555":"#E85D04",flexShrink:0}}>×{item.cantidad}</span>
-                          <span style={{fontWeight:700,fontSize:13,color:item.entregado?"#555":"#F0EBE3",flex:1}}>{nombreBase}</span>
+                        <div style={{display:"flex",alignItems:"center",gap:8}}>
+                          <span style={{fontSize:22,flexShrink:0}}>{item.icon}</span>
+                          <span style={{fontWeight:900,fontSize:16,color:item.entregado?"#555":"#E85D04",flexShrink:0}}>×{item.cantidad}</span>
+                          <span style={{fontWeight:600,fontSize:15,color:item.entregado?"#555":"#F0EBE3",flex:1,lineHeight:1.4}}>{lineaPrincipal}</span>
                           {col.k==="entregado" && !item.entregado && (
                             <button style={S.checkBtn} onClick={()=>onMarcarItem(p.id,p,(p.items||[]).findIndex(x=>x===item))}>✓</button>
                           )}
-                          {item.entregado && <span style={{fontSize:10,color:"#06D6A0",flexShrink:0}}>✓</span>}
+                          {item.entregado && <span style={{fontSize:11,color:"#06D6A0",flexShrink:0}}>✓</span>}
                         </div>
-                        {tipo         && <div style={{fontSize:11,color:"#aaa",paddingLeft:30}}>🔸 {tipo}</div>}
-                        {extraQueso   && <div style={{fontSize:11,color:"#FFBA08",paddingLeft:30}}>🧀 {extraQueso}</div>}
-                        {complementos && <div style={{fontSize:11,color:"#888",paddingLeft:30}}>+ {complementos}</div>}
                       </div>
                       );
                     })}
@@ -677,24 +700,27 @@ function Central({ pedidos, onUpdate, onCancelar, onAgregarAl, onMarcarItem, men
                       const tipo         = partes[0] || null;
                       const extraQueso   = partes.find(p=>p.includes("Extra Queso")) || null;
                       const complementos = partes.filter(p=>p!==tipo && !p.includes("Extra Queso")).join(", ");
+                      const lineaPrincipal = [
+                        nombreBase,
+                        tipo,
+                        extraQueso,
+                        complementos || null
+                      ].filter(Boolean).join(" | ");
                       return (
-                      <div key={i} style={{padding:"4px 6px",borderBottom:"1px solid #2a2a2a",borderRadius:4,
+                      <div key={i} style={{padding:"5px 6px",borderBottom:"1px solid #2a2a2a",borderRadius:4,
                         background:"rgba(255,186,8,0.06)",
                         animation:"pulseNew 2s ease-in-out infinite",
-                        opacity:item.entregado?0.45:1,
+                        opacity:item.entregado?0.4:1,
                         textDecoration:item.entregado?"line-through":"none"}}>
-                        <div style={{display:"flex",alignItems:"center",gap:6}}>
-                          <span style={{fontSize:18,flexShrink:0}}>{item.icon}</span>
-                          <span style={{fontWeight:800,fontSize:13,color:"#FFBA08",flexShrink:0}}>×{item.cantidad}</span>
-                          <span style={{fontWeight:700,fontSize:13,color:item.entregado?"#555":"#F0EBE3",flex:1}}>{nombreBase}</span>
+                        <div style={{display:"flex",alignItems:"center",gap:8}}>
+                          <span style={{fontSize:22,flexShrink:0}}>{item.icon}</span>
+                          <span style={{fontWeight:900,fontSize:16,color:"#FFBA08",flexShrink:0}}>×{item.cantidad}</span>
+                          <span style={{fontWeight:600,fontSize:15,color:item.entregado?"#555":"#F0EBE3",flex:1,lineHeight:1.4}}>{lineaPrincipal}</span>
                           {col.k==="entregado" && !item.entregado && (
                             <button style={S.checkBtn} onClick={()=>onMarcarItem(p.id,p,(p.items||[]).findIndex(x=>x===item))}>✓</button>
                           )}
-                          {item.entregado && <span style={{fontSize:10,color:"#06D6A0",flexShrink:0}}>✓</span>}
+                          {item.entregado && <span style={{fontSize:11,color:"#06D6A0",flexShrink:0}}>✓</span>}
                         </div>
-                        {tipo         && <div style={{fontSize:11,color:"#aaa",paddingLeft:30}}>🔸 {tipo}</div>}
-                        {extraQueso   && <div style={{fontSize:11,color:"#FFBA08",paddingLeft:30}}>🧀 {extraQueso}</div>}
-                        {complementos && <div style={{fontSize:11,color:"#888",paddingLeft:30}}>+ {complementos}</div>}
                       </div>
                       );
                     })}
