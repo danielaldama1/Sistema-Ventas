@@ -43,7 +43,7 @@ const db = firebase.database();
 // USUARIOS
 // ══════════════════════════════════════════════════════
 const USUARIOS = {
-  "mesero": { pass:"mesa2024", rol:"mesero" },
+  "mesero": { pass:"mesero123", rol:"mesero" },
   "admin":  { pass:"Angeles14", rol:"admin" },
 };
 const PRECIO_EXTRA_QUESO = 5;
@@ -69,13 +69,13 @@ const MENU_DEFAULT = {
     extras:["Crema","Cebolla","Cilantro","Lechuga","Extra Queso +$5"]
   },
   "Tacos": {
-    icon:"🌮", color:"#F48C06", categoria:"comida", precio:28, unidad:"c/u",
+    icon:"🌮", color:"#F48C06", categoria:"comida", precio:30, unidad:"c/u",
     variantes:["Suadero","Longaniza","Campechanos","Mixtos"],
     extras:["Nopales","Papas","Cebolla","Cilantro","Extra Queso +$5"]
   },
   "Pambazos": {
-    icon:"🥙", color:"#DC2F02", categoria:"comida", precio:28,
-    variantes:["Chicharrón","Queso","Tinga","Papa con Longaniza","Hongos","Suadero"],
+    icon:"🥙", color:"#DC2F02", categoria:"comida", precio:30,
+    variantes:["Chicharrón","Queso","Tinga","Papa con Longaniza","Suadero"],
     extras:["Lechuga","Crema","Queso","Extra Queso +$5"]
   },
   "Quesadillas": {
@@ -86,7 +86,7 @@ const MENU_DEFAULT = {
   "Huaraches": {
     icon:"🫔", color:"#3A86FF", categoria:"comida", precio:40,
     variantes:["Suadero","Longaniza","Campechanos","Otro"],
-    extras:["Cebolla","Lechuga","Queso","Guacamole","Extra Queso +$5"]
+    extras:["Cebolla","Lechuga","Queso","Extra Queso +$5"]
   },
   "Gorditas": {
     icon:"🫔", color:"#06D6A0", categoria:"comida", precio:25,
@@ -102,19 +102,19 @@ const MENU_DEFAULT = {
   "Agua": {
     icon:"💧", color:"#00B4D8", categoria:"bebida",
     variantes:["1/2 L","1 L"],
-    sabores:["Horchata","Jamaica","Limón","Tamarindo"],
+    sabores:["Horchata","Citricos"],
     precios:{"1/2 L":25,"1 L":35}
   },
   "Café": {
     icon:"☕", color:"#6F4E37", categoria:"bebida",
     variantes:["1/4 L","1/2 L","1 L"],
-    extras:["Con leche","Sin azúcar","Con piloncillo"],
+    extras:["Con leche"],
     precios:{"1/4 L":20,"1/2 L":37,"1 L":70}
   },
   "Atole": {
     icon:"🥛", color:"#F4A261", categoria:"bebida",
     variantes:["1/4 L","1/2 L","1 L"],
-    sabores:["Chocolate","Guayaba","Fresa","Vainilla"],
+    sabores:["Chocolate"],
     precios:{"1/4 L":25,"1/2 L":45,"1 L":85}
   },
   "Refresco": {
