@@ -43,7 +43,7 @@ const db = firebase.database();
 // USUARIOS
 // ══════════════════════════════════════════════════════
 const USUARIOS = {
-  "mesero": { pass:"mesero123", rol:"mesero" },
+  "mesero": { pass:"mesa2024", rol:"mesero" },
   "admin":  { pass:"Angeles14", rol:"admin" },
 };
 const PRECIO_EXTRA_QUESO = 5;
@@ -69,13 +69,13 @@ const MENU_DEFAULT = {
     extras:["Crema","Cebolla","Cilantro","Lechuga","Extra Queso +$5"]
   },
   "Tacos": {
-    icon:"🌮", color:"#F48C06", categoria:"comida", precio:30, unidad:"c/u",
+    icon:"🌮", color:"#F48C06", categoria:"comida", precio:28, unidad:"c/u",
     variantes:["Suadero","Longaniza","Campechanos","Mixtos"],
     extras:["Nopales","Papas","Cebolla","Cilantro","Extra Queso +$5"]
   },
   "Pambazos": {
-    icon:"🥙", color:"#DC2F02", categoria:"comida", precio:30,
-    variantes:["Chicharrón","Queso","Tinga","Papa con Longaniza","Suadero"],
+    icon:"🥙", color:"#DC2F02", categoria:"comida", precio:28,
+    variantes:["Chicharrón","Queso","Tinga","Papa con Longaniza","Hongos","Suadero"],
     extras:["Lechuga","Crema","Queso","Extra Queso +$5"]
   },
   "Quesadillas": {
@@ -86,7 +86,7 @@ const MENU_DEFAULT = {
   "Huaraches": {
     icon:"🫔", color:"#3A86FF", categoria:"comida", precio:40,
     variantes:["Suadero","Longaniza","Campechanos","Otro"],
-    extras:["Cebolla","Lechuga","Queso","Extra Queso +$5"]
+    extras:["Cebolla","Lechuga","Queso","Guacamole","Extra Queso +$5"]
   },
   "Gorditas": {
     icon:"🫔", color:"#06D6A0", categoria:"comida", precio:25,
@@ -102,19 +102,19 @@ const MENU_DEFAULT = {
   "Agua": {
     icon:"💧", color:"#00B4D8", categoria:"bebida",
     variantes:["1/2 L","1 L"],
-    sabores:["Horchata","Citricos"],
+    sabores:["Horchata","Jamaica","Limón","Tamarindo"],
     precios:{"1/2 L":25,"1 L":35}
   },
   "Café": {
     icon:"☕", color:"#6F4E37", categoria:"bebida",
     variantes:["1/4 L","1/2 L","1 L"],
-    extras:["Con leche"],
+    extras:["Con leche","Sin azúcar","Con piloncillo"],
     precios:{"1/4 L":20,"1/2 L":37,"1 L":70}
   },
   "Atole": {
     icon:"🥛", color:"#F4A261", categoria:"bebida",
     variantes:["1/4 L","1/2 L","1 L"],
-    sabores:["Chocolate"],
+    sabores:["Chocolate","Guayaba","Fresa","Vainilla"],
     precios:{"1/4 L":25,"1/2 L":45,"1 L":85}
   },
   "Refresco": {
@@ -237,10 +237,16 @@ function LoginSistema({ onLogin }) {
   const [usuario, setUsuario] = useState("");
   const [pass,    setPass]    = useState("");
   const [error,   setError]   = useState("");
-  const intentar = () => {
-    const u = USUARIOS[usuario.toLowerCase().trim()];
-    if (u && u.pass === pass) { onLogin({ usuario: usuario.toLowerCase().trim(), rol: u.rol }); }
-    else { setError("Usuario o contraseña incorrectos"); setTimeout(()=>setError(""),2500); }
+  const intentar = async () => {
+    const key = usuario.toLowerCase().trim();
+    // Check hardcoded users first
+    const uHard = USUARIOS[key];
+    if (uHard && uHard.pass === pass) { onLogin({ usuario: key, rol: uHard.rol }); return; }
+    // Check Firebase users
+    const snap = await db.ref(`usuarios/${key}`).once("value");
+    const uFb  = snap.val();
+    if (uFb && uFb.pass === pass) { onLogin({ usuario: key, rol: uFb.rol }); return; }
+    setError("Usuario o contraseña incorrectos"); setTimeout(()=>setError(""),2500);
   };
   return (
     <div style={{minHeight:"100vh",background:"#0F0F0F",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
@@ -645,85 +651,85 @@ function Central({ pedidos, onUpdate, onCancelar, onAgregarAl, onMarcarItem, men
               return (
                 <div key={p.id} style={{...S.card,...(p.actualizado&&!esCobrado?{border:"2px solid #E85D04"}:{})}}>
                   <div style={S.cardTop}>
-                    <b>#{p.idDia || String(p.ts||"").slice(-4)}</b> — {p.mesa||"Sin mesa"}<br/>
-                    <small style={{color:"#aaa"}}>{p.hora}{p.actualizado?` · act. ${p.actualizado}`:""} · {fmt(p.total)}</small><br/>
-                  {p.mesero && <small style={{color:"#9D4EDD"}}>👤 {p.mesero}{p.tipoServicio ? ` · ${p.tipoServicio==="llevar"?"🥡 Para llevar":"🍽️ En sitio"}` : ""}</small>}
+                    <span style={{fontWeight:800,fontSize:16}}>#{p.idDia || String(p.ts||"").slice(-4)}</span>
+                    <span style={{fontSize:15}}> — {p.mesa||"Sin mesa"}</span><br/>
+                    <span style={{color:"#aaa",fontSize:14}}>{p.hora}{p.actualizado?` · act. ${p.actualizado}`:""} · {fmt(p.total)}</span><br/>
+                    {p.mesero && <span style={{color:"#9D4EDD",fontSize:14}}>👤 {p.mesero}{p.tipoServicio ? ` · ${p.tipoServicio==="llevar"?"🥡 Para llevar":"🍽️ En sitio"}` : ""}</span>}
                   </div>
 
                   <div style={S.itemsList}>
-                    {/* Items originales — si el pedido estaba entregado y se agregaron nuevos, van tachados */}
-                    {hayNuevos && (
-                      <div style={{fontSize:10,color:"#888",fontWeight:700,padding:"2px 0",letterSpacing:"0.4px"}}>PREPARADOS</div>
-                    )}
-                    {itemsOriginales.map((item,i)=>{
-                      const partes = item.nombre.includes("(")
-                        ? item.nombre.slice(item.nombre.indexOf("(")+1, item.nombre.lastIndexOf(")")).split("|").map(s=>s.trim())
-                        : [];
-                      const nombreBase   = item.nombre.split(" (")[0].trim();
-                      const tipo         = partes[0] || null;
-                      const extraQueso   = partes.find(p=>p.includes("Extra Queso")) || null;
-                      const complementos = partes.filter(p=>p!==tipo && !p.includes("Extra Queso")).join(", ");
-                      const lineaPrincipal = [
-                        nombreBase,
-                        tipo,
-                        extraQueso,
-                        complementos || null
-                      ].filter(Boolean).join(" | ");
-                      return (
-                      <div key={i} style={{padding:"5px 0",borderBottom:"1px solid #222",
-                        opacity:item.entregado?0.4:1,
-                        textDecoration:item.entregado?"line-through":"none"}}>
-                        <div style={{display:"flex",alignItems:"center",gap:8}}>
-                          <span style={{fontSize:22,flexShrink:0}}>{item.icon}</span>
-                          <span style={{fontWeight:900,fontSize:16,color:item.entregado?"#555":"#E85D04",flexShrink:0}}>×{item.cantidad}</span>
-                          <span style={{fontWeight:600,fontSize:15,color:item.entregado?"#555":"#F0EBE3",flex:1,lineHeight:1.4}}>{lineaPrincipal}</span>
-                          {col.k==="entregado" && !item.entregado && (
-                            <button style={S.checkBtn} onClick={()=>onMarcarItem(p.id,p,(p.items||[]).findIndex(x=>x===item))}>✓</button>
-                          )}
-                          {item.entregado && <span style={{fontSize:11,color:"#06D6A0",flexShrink:0}}>✓</span>}
-                        </div>
-                      </div>
-                      );
-                    })}
+                    {(()=>{
+                      // En entregado/cobrado: vista limpia sin tachados ni botones
+                      const esVistaLimpia = col.k==="entregado" || col.k==="cobrado";
+                      const todosItems = (p.items||[]);
 
-                    {/* Items NUEVOS — resaltados */}
-                    {hayNuevos && (
-                      <div style={{fontSize:10,color:"#FFBA08",fontWeight:800,padding:"4px 0 2px",letterSpacing:"0.4px"}}>
-                        NUEVOS 🆕 — PENDIENTES DE PREPARAR
-                      </div>
-                    )}
-                    {itemsNuevos.map((item,i)=>{
-                      const partes = item.nombre.includes("(")
-                        ? item.nombre.slice(item.nombre.indexOf("(")+1, item.nombre.lastIndexOf(")")).split("|").map(s=>s.trim())
-                        : [];
-                      const nombreBase   = item.nombre.split(" (")[0].trim();
-                      const tipo         = partes[0] || null;
-                      const extraQueso   = partes.find(p=>p.includes("Extra Queso")) || null;
-                      const complementos = partes.filter(p=>p!==tipo && !p.includes("Extra Queso")).join(", ");
-                      const lineaPrincipal = [
-                        nombreBase,
-                        tipo,
-                        extraQueso,
-                        complementos || null
-                      ].filter(Boolean).join(" | ");
+                      const renderItem = (item, i, esNuevoItem) => {
+                        const partes = item.nombre.includes("(")
+                          ? item.nombre.slice(item.nombre.indexOf("(")+1, item.nombre.lastIndexOf(")")).split("|").map(s=>s.trim())
+                          : [];
+                        const nombreBase     = item.nombre.split(" (")[0].trim();
+                        const tipo           = partes[0] || null;
+                        const extraQueso     = partes.find(p=>p.includes("Extra Queso")) || null;
+                        const complementos   = partes.filter(p=>p!==tipo && !p.includes("Extra Queso")).join(", ");
+                        const lineaPrincipal = [nombreBase, tipo, extraQueso, complementos||null].filter(Boolean).join(" | ");
+
+                        if (esVistaLimpia) {
+                          // Vista limpia: sin tachado, sin botones, todo visible
+                          return (
+                            <div key={i} style={{padding:"5px 0",borderBottom:"1px solid #222"}}>
+                              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                                <span style={{fontSize:22,flexShrink:0}}>{item.icon}</span>
+                                <span style={{fontWeight:900,fontSize:16,color:"#E85D04",flexShrink:0}}>×{item.cantidad}</span>
+                                <span style={{fontWeight:600,fontSize:15,color:"#F0EBE3",flex:1,lineHeight:1.4}}>{lineaPrincipal}</span>
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        // Vista normal (pendiente / en_proceso): tachado + botones
+                        if (esNuevoItem) {
+                          return (
+                            <div key={i} style={{padding:"5px 6px",borderBottom:"1px solid #2a2a2a",borderRadius:4,
+                              background:"rgba(255,186,8,0.06)",animation:"pulseNew 2s ease-in-out infinite",
+                              opacity:item.entregado?0.4:1,textDecoration:item.entregado?"line-through":"none"}}>
+                              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                                <span style={{fontSize:22,flexShrink:0}}>{item.icon}</span>
+                                <span style={{fontWeight:900,fontSize:16,color:"#FFBA08",flexShrink:0}}>×{item.cantidad}</span>
+                                <span style={{fontWeight:600,fontSize:15,color:item.entregado?"#555":"#F0EBE3",flex:1,lineHeight:1.4}}>{lineaPrincipal}</span>
+                              </div>
+                            </div>
+                          );
+                        }
+                        return (
+                          <div key={i} style={{padding:"5px 0",borderBottom:"1px solid #222",
+                            opacity:item.entregado?0.4:1,textDecoration:item.entregado?"line-through":"none"}}>
+                            <div style={{display:"flex",alignItems:"center",gap:8}}>
+                              <span style={{fontSize:22,flexShrink:0}}>{item.icon}</span>
+                              <span style={{fontWeight:900,fontSize:16,color:item.entregado?"#555":"#E85D04",flexShrink:0}}>×{item.cantidad}</span>
+                              <span style={{fontWeight:600,fontSize:15,color:item.entregado?"#555":"#F0EBE3",flex:1,lineHeight:1.4}}>{lineaPrincipal}</span>
+                              {col.k==="entregado" && !item.entregado && (
+                                <button style={S.checkBtn} onClick={()=>onMarcarItem(p.id,p,todosItems.indexOf(item))}>✓</button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      };
+
+                      if (esVistaLimpia) {
+                        // Mostrar todos los items limpios sin separadores
+                        return todosItems.map((item,i) => renderItem(item, i, false));
+                      }
+
+                      // Vista normal: separar originales y nuevos
                       return (
-                      <div key={i} style={{padding:"5px 6px",borderBottom:"1px solid #2a2a2a",borderRadius:4,
-                        background:"rgba(255,186,8,0.06)",
-                        animation:"pulseNew 2s ease-in-out infinite",
-                        opacity:item.entregado?0.4:1,
-                        textDecoration:item.entregado?"line-through":"none"}}>
-                        <div style={{display:"flex",alignItems:"center",gap:8}}>
-                          <span style={{fontSize:22,flexShrink:0}}>{item.icon}</span>
-                          <span style={{fontWeight:900,fontSize:16,color:"#FFBA08",flexShrink:0}}>×{item.cantidad}</span>
-                          <span style={{fontWeight:600,fontSize:15,color:item.entregado?"#555":"#F0EBE3",flex:1,lineHeight:1.4}}>{lineaPrincipal}</span>
-                          {col.k==="entregado" && !item.entregado && (
-                            <button style={S.checkBtn} onClick={()=>onMarcarItem(p.id,p,(p.items||[]).findIndex(x=>x===item))}>✓</button>
-                          )}
-                          {item.entregado && <span style={{fontSize:11,color:"#06D6A0",flexShrink:0}}>✓</span>}
-                        </div>
-                      </div>
+                        <>
+                          {hayNuevos && <div style={{fontSize:10,color:"#888",fontWeight:700,padding:"2px 0",letterSpacing:"0.4px"}}>PREPARADOS</div>}
+                          {itemsOriginales.map((item,i) => renderItem(item, i, false))}
+                          {hayNuevos && <div style={{fontSize:10,color:"#FFBA08",fontWeight:800,padding:"4px 0 2px",letterSpacing:"0.4px"}}>NUEVOS 🆕 — PENDIENTES</div>}
+                          {itemsNuevos.map((item,i) => renderItem(item, i, true))}
+                        </>
                       );
-                    })}
+                    })()}
                   </div>
 
                   {/* Botones de acción — cobrados no tienen ninguno */}
@@ -924,12 +930,49 @@ function Reportes({ pedidos }) {
 }
 
 // ══════════════════════════════════════════════════════
-// ADMIN — CRUD de menú
+// ADMIN — CRUD de menú + gestión de usuarios
 // ══════════════════════════════════════════════════════
 function AdminView({ menu, onUpdate }) {
+  const [seccion,  setSeccion]  = useState("menu");   // "menu" | "usuarios"
   const [tab,      setTab]      = useState("lista");
   const [editando, setEditando] = useState(null);
   const [form,     setForm]     = useState(formVacio());
+  // Usuarios: se guardan en Firebase bajo /usuarios
+  const [usuarios,    setUsuarios]    = useState({});
+  const [tabU,        setTabU]        = useState("lista"); // "lista"|"nuevo"
+  const [editandoU,   setEditandoU]   = useState(null);
+  const [formU,       setFormU]       = useState({usuario:"",pass:"",rol:"mesero"});
+  const [notifAdmin,  setNotifAdmin]  = useState(null);
+
+  useEffect(()=>{
+    db.ref("usuarios").on("value", snap=>{
+      const val = snap.val();
+      // Merge Firebase users with hardcoded fallback
+      setUsuarios(val || {});
+    });
+  },[]);
+
+  const showNotifAdmin = msg => { setNotifAdmin(msg); setTimeout(()=>setNotifAdmin(null),2500); };
+
+  const guardarUsuario = () => {
+    const u = formU.usuario.trim().toLowerCase();
+    if (!u)           { alert("El nombre de usuario es obligatorio"); return; }
+    if (!formU.pass)  { alert("La contraseña es obligatoria"); return; }
+    db.ref(`usuarios/${u}`).set({ pass:formU.pass, rol:formU.rol });
+    showNotifAdmin(`✅ Usuario "${u}" ${editandoU?"actualizado":"creado"}`);
+    setTabU("lista"); setEditandoU(null); setFormU({usuario:"",pass:"",rol:"mesero"});
+  };
+
+  const editarUsuario = (u, datos) => {
+    setFormU({ usuario:u, pass:datos.pass, rol:datos.rol });
+    setEditandoU(u); setTabU("nuevo");
+  };
+
+  const eliminarUsuario = (u) => {
+    if (!confirm(`¿Eliminar al usuario "${u}"?`)) return;
+    db.ref(`usuarios/${u}`).remove();
+    showNotifAdmin(`🗑️ Usuario "${u}" eliminado`);
+  };
 
   function formVacio() {
     return { nombre:"", icon:"🍽️", color:"#E85D04", categoria:"comida",
@@ -986,6 +1029,17 @@ function AdminView({ menu, onUpdate }) {
 
   return (
     <div style={S.rWrap}>
+      {notifAdmin && <div style={{...S.toast,top:70}}>{notifAdmin}</div>}
+
+      {/* Selector de sección */}
+      <div style={{display:"flex",gap:8,marginBottom:20}}>
+        <button style={{...SA.tabBtn,...(seccion==="menu"?SA.tabBtnOn:{})}} onClick={()=>setSeccion("menu")}>🍽️ Menú</button>
+        <button style={{...SA.tabBtn,...(seccion==="usuarios"?SA.tabBtnOn:{})}} onClick={()=>setSeccion("usuarios")}>👥 Usuarios</button>
+      </div>
+
+      {/* ── SECCIÓN MENÚ ── */}
+      {seccion==="menu" && (
+      <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
         <h3 style={{color:"#E85D04",margin:0}}>⚙️ Gestión de Menú</h3>
         {tab==="lista"
@@ -1051,10 +1105,86 @@ function AdminView({ menu, onUpdate }) {
         </div>
       )}
     </div>
+      )}
+
+      {/* ── SECCIÓN USUARIOS ── */}
+      {seccion==="usuarios" && (
+        <div>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+            <h3 style={{color:"#E85D04",margin:0}}>👥 Gestión de Usuarios</h3>
+            {tabU==="lista"
+              ? <button style={SA.btnVerde} onClick={()=>{ setFormU({usuario:"",pass:"",rol:"mesero"}); setEditandoU(null); setTabU("nuevo"); }}>+ Nuevo usuario</button>
+              : <button style={SA.btnGris}  onClick={()=>setTabU("lista")}>← Volver</button>}
+          </div>
+
+          {tabU==="lista" && (
+            <div style={{display:"flex",flexDirection:"column",gap:10,maxWidth:480}}>
+              {/* Usuarios hardcoded siempre visibles */}
+              {[{u:"admin",d:{rol:"admin"}},{u:"mesero",d:{rol:"mesero"}}].map(({u,d})=>(
+                <div key={u} style={{...S.card,display:"flex",alignItems:"center",gap:12,padding:14}}>
+                  <div style={{fontSize:28}}>👤</div>
+                  <div style={{flex:1}}>
+                    <div style={{fontWeight:700,fontSize:15}}>{u}</div>
+                    <div style={{fontSize:12,color:"#aaa"}}>{d.rol} · contraseña fija</div>
+                  </div>
+                  <span style={{fontSize:11,color:"#555",background:"#333",padding:"2px 8px",borderRadius:10}}>sistema</span>
+                </div>
+              ))}
+              {/* Usuarios de Firebase */}
+              {Object.entries(usuarios).map(([u,d])=>(
+                <div key={u} style={{...S.card,display:"flex",alignItems:"center",gap:12,padding:14}}>
+                  <div style={{fontSize:28}}>👤</div>
+                  <div style={{flex:1}}>
+                    <div style={{fontWeight:700,fontSize:15}}>{u}</div>
+                    <div style={{fontSize:12,color:"#aaa"}}>{d.rol}</div>
+                  </div>
+                  <div style={{display:"flex",gap:6}}>
+                    <button style={{...SA.btnPeq,background:"#3A86FF",padding:"5px 10px"}} onClick={()=>editarUsuario(u,d)}>✏️</button>
+                    <button style={{...SA.btnPeq,background:"#EF233C",padding:"5px 10px"}} onClick={()=>eliminarUsuario(u)}>🗑️</button>
+                  </div>
+                </div>
+              ))}
+              {Object.keys(usuarios).length===0 && (
+                <div style={{color:"#555",fontSize:14,padding:10}}>No hay usuarios adicionales creados aún.</div>
+              )}
+            </div>
+          )}
+
+          {tabU==="nuevo" && (
+            <div style={{maxWidth:400}}>
+              <h4 style={{color:"#ccc",marginTop:0}}>{editandoU?`Editando: ${editandoU}`:"Nuevo usuario"}</h4>
+              <div style={SA.grupo}>
+                <label style={SA.lbl}>Usuario *</label>
+                <input style={SA.inp} placeholder="Ej: juan" value={formU.usuario}
+                  disabled={!!editandoU}
+                  onChange={e=>setFormU(p=>({...p,usuario:e.target.value.toLowerCase()}))}/>
+              </div>
+              <div style={SA.grupo}>
+                <label style={SA.lbl}>Contraseña *</label>
+                <input style={SA.inp} placeholder="Contraseña" value={formU.pass}
+                  onChange={e=>setFormU(p=>({...p,pass:e.target.value}))}/>
+              </div>
+              <div style={SA.grupo}>
+                <label style={SA.lbl}>Rol</label>
+                <select style={SA.inp} value={formU.rol} onChange={e=>setFormU(p=>({...p,rol:e.target.value}))}>
+                  <option value="mesero">Mesero</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+              <button style={{...SA.btnVerde,width:"100%",padding:"13px 0",fontSize:15}} onClick={guardarUsuario}>
+                💾 {editandoU?"Guardar cambios":"Crear usuario"}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 
 const SA = {
+  tabBtn:{ flex:1,padding:"10px 0",borderRadius:10,border:"1px solid #333",background:"#1A1A1A",color:"#888",fontWeight:700,fontSize:14,cursor:"pointer" },
+  tabBtnOn:{ background:"#E85D04",border:"1px solid #E85D04",color:"#fff" },
   grupo:{ marginBottom:12 },
   lbl:{ display:"block",fontSize:12,color:"#888",marginBottom:5,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.4px" },
   inp:{ width:"100%",background:"#111",border:"1px solid #333",color:"#fff",borderRadius:8,padding:"10px 12px",fontSize:14 },
