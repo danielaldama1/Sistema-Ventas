@@ -43,7 +43,7 @@ const db = firebase.database();
 // USUARIOS
 // ══════════════════════════════════════════════════════
 const USUARIOS = {
-  "mesero": { pass:"mesa2024", rol:"mesero" },
+  "mesero": { pass:"mesero123", rol:"mesero" },
   "admin":  { pass:"Angeles14", rol:"admin" },
 };
 const PRECIO_EXTRA_QUESO = 5;
@@ -57,92 +57,71 @@ const PRECIO_RELLENO_GORDITAS    = 5; // se cobra desde el 1er relleno
 // ══════════════════════════════════════════════════════
 const MENU_DEFAULT = {
   "Chilaquiles": {
-    icon:"🍳", color:"#E85D04", categoria:"comida", precio:55,
+    icon:"🍳", color:"#E85D04", categoria:"comida", precio:60,
     variantes:["Verdes","Rojos"],
     rellenos:["Pollo","Suadero","Campechanos","Huevo"],
     extras:["Cebolla","Crema","Queso","Extra Queso +$5"],
     multiRelleno: true
   },
-  "Enchiladas": {
-    icon:"🌯", color:"#C1121F", categoria:"comida", precio:55,
-    variantes:["Sencillas","Pollo","Suadero","Otro"],
-    extras:["Crema","Cebolla","Cilantro","Lechuga","Extra Queso +$5"]
-  },
   "Tacos": {
-    icon:"🌮", color:"#F48C06", categoria:"comida", precio:28, unidad:"c/u",
+    icon:"🌮", color:"#F48C06", categoria:"comida", precio:35, unidad:"c/u",
     variantes:["Suadero","Longaniza","Campechanos","Mixtos"],
     extras:["Nopales","Papas","Cebolla","Cilantro","Extra Queso +$5"]
   },
   "Pambazos": {
-    icon:"🥙", color:"#DC2F02", categoria:"comida", precio:28,
+    icon:"🥙", color:"#DC2F02", categoria:"comida", precio:35,
     variantes:["Chicharrón","Queso","Tinga","Papa con Longaniza","Hongos","Suadero"],
     extras:["Lechuga","Crema","Queso","Extra Queso +$5"]
   },
   "Quesadillas": {
-    icon:"🫓", color:"#9D4EDD", categoria:"comida", precio:30,
+    icon:"🫓", color:"#9D4EDD", categoria:"comida", precio:35,
     variantes:["Chicharrón","Queso","Tinga","Papa con Longaniza","Hongos","Suadero"],
     extras:["Lechuga","Crema","Queso","Extra Queso +$5"]
   },
-  "Huaraches": {
-    icon:"🫔", color:"#3A86FF", categoria:"comida", precio:40,
-    variantes:["Suadero","Longaniza","Campechanos","Otro"],
-    extras:["Cebolla","Lechuga","Queso","Guacamole","Extra Queso +$5"]
-  },
-  "Gorditas": {
-    icon:"🫔", color:"#06D6A0", categoria:"comida", precio:25,
-    variantes:["Suadero","Longaniza","Chicharrón","Queso","Otro"],
-    extras:["Cilantro","Cebolla","Queso","Extra Queso +$5"]
-  },
   "Pan de Dulce": {
-    icon:"🍩", color:"#C77DFF", categoria:"comida", precio:12
+    icon:"🍩", color:"#C77DFF", categoria:"comida", precio:15
   },
   "Pan Blanco": {
-    icon:"🍞", color:"#F5CBA7", categoria:"comida", precio:5
+    icon:"🍞", color:"#F5CBA7", categoria:"comida", precio:6
   },
   "Agua": {
     icon:"💧", color:"#00B4D8", categoria:"bebida",
     variantes:["1/2 L","1 L"],
-    sabores:["Horchata","Jamaica","Limón","Tamarindo"],
-    precios:{"1/2 L":25,"1 L":35}
+    sabores:["Horchata","Citricos"],
+    precios:{"1/2 L":30,"1 L":40}
   },
   "Café": {
     icon:"☕", color:"#6F4E37", categoria:"bebida",
     variantes:["1/4 L","1/2 L","1 L"],
-    extras:["Con leche","Sin azúcar","Con piloncillo"],
-    precios:{"1/4 L":20,"1/2 L":37,"1 L":70}
-  },
-  "Atole": {
-    icon:"🥛", color:"#F4A261", categoria:"bebida",
-    variantes:["1/4 L","1/2 L","1 L"],
-    sabores:["Chocolate","Guayaba","Fresa","Vainilla"],
-    precios:{"1/4 L":25,"1/2 L":45,"1 L":85}
+    extras:["Con leche"],
+    precios:{"1/4 L":25,"1/2 L":40,"1 L":80}
   },
   "Refresco": {
     icon:"🥤", color:"#EF233C", categoria:"bebida",
     variantes:["Coca-Cola","Boing","Otro"],
-    precios:{"Coca-Cola":25,"Boing":25,"Otro":25}
+    precios:{"Coca-Cola":30,"Boing":30,"Otro":30}
   },
   "Limonada": {
     icon:"🍋", color:"#F9C74F", categoria:"bebida",
     variantes:["Natural 1/2 L","Natural 1 L","Mineral 1/2 L","Mineral 1 L"],
-    precios:{"Natural 1/2 L":35,"Natural 1 L":75,"Mineral 1/2 L":35,"Mineral 1 L":75}
+    precios:{"Natural 1/2 L":40,"Natural 1 L":75,"Mineral 1/2 L":40,"Mineral 1 L":75}
   },
   "Michelada": {
     icon:"🍺", color:"#FFBA08", categoria:"bebida",
     variantes:["Corona 1/2 L","Corona 1 L","Victoria 1/2 L","Victoria 1 L"],
     extras:["Clamato","Naranja","Tamarindo","Limón","Salsas","Todo","Solo Limón y Sal"],
-    precios:{"Corona 1/2 L":45,"Corona 1 L":90,"Victoria 1/2 L":45,"Victoria 1 L":90}
+    precios:{"Corona 1/2 L":55,"Corona 1 L":100,"Victoria 1/2 L":55,"Victoria 1 L":100}
   },
   "Mojito": {
     icon:"🍹", color:"#40916C", categoria:"bebida",
     variantes:["Limón 1/2 L","Limón 1 L","Fresa 1/2 L","Fresa 1 L","Frutos Rojos 1/2 L","Frutos Rojos 1 L"],
     extras:["Escarchado","Doble"],
-    precios:{"Limón 1/2 L":60,"Limón 1 L":100,"Fresa 1/2 L":60,"Fresa 1 L":100,"Frutos Rojos 1/2 L":70,"Frutos Rojos 1 L":120}
+    precios:{"Limón 1/2 L":65,"Limón 1 L":110,"Fresa 1/2 L":65,"Fresa 1 L":110,"Frutos Rojos 1/2 L":70,"Frutos Rojos 1 L":125}
   },
   "Caguama": {
     icon:"🍻", color:"#B5830A", categoria:"bebida",
     variantes:["Corona","Victoria"],
-    precios:{"Corona":55,"Victoria":55}
+    precios:{"Corona":60,"Victoria":60}
   },
   "Vasos": {
     icon:"🥛", color:"#ADB5BD", categoria:"bebida",
@@ -529,7 +508,6 @@ function App() {
         <div style={S.brand}>
           <span style={{fontSize:22}}>🌮</span>
           <span style={S.brandText}>Bendito Antojo</span>
-          {fbReady && <span style={S.online}>● EN VIVO</span>}
         </div>
         <div style={S.navBtns}>
           {navItems.filter(v=>!v.soloAdmin||esAdmin).map(v=>(
