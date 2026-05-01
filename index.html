@@ -718,8 +718,22 @@ function Central({ pedidos, onUpdate, onCancelar, onAgregarAl, onMarcarItem, men
                       };
 
                       if (esVistaLimpia) {
-                        // Mostrar todos los items limpios sin separadores
-                        return todosItems.map((item,i) => renderItem(item, i, false));
+                        // En entregado/cobrado: colapsado por defecto, expandir con botón
+                        const expandido = expandidos[p.id];
+                        return (
+                          <>
+                            <button
+                              style={{width:"100%",padding:"5px 0",background:"transparent",
+                                border:"1px dashed #444",borderRadius:6,color:"#aaa",fontSize:12,
+                                cursor:"pointer",fontWeight:600,marginBottom:expandido?6:0}}
+                              onClick={()=>toggleExpandir(p.id)}>
+                              {expandido
+                                ? "▲ Ocultar pedido"
+                                : `▼ Ver pedido completo (${todosItems.length} producto${todosItems.length!==1?"s":""})`}
+                            </button>
+                            {expandido && todosItems.map((item,i) => renderItem(item, i, false))}
+                          </>
+                        );
                       }
 
                       // Vista normal: si hay nuevos, mostrar solo los nuevos por defecto
