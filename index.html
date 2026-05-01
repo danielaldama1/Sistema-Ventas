@@ -87,7 +87,7 @@ const MENU_DEFAULT = {
   "Agua": {
     icon:"💧", color:"#00B4D8", categoria:"bebida",
     variantes:["1/2 L","1 L"],
-    sabores:["Horchata","Citricos"],
+    sabores:["Horchata","Jamaica","Limón","Tamarindo"],
     precios:{"1/2 L":30,"1 L":40}
   },
   "Café": {
@@ -535,6 +535,7 @@ function Central({ pedidos, onUpdate, onCancelar, onAgregarAl, onMarcarItem, men
   const [carritoExtra,    setCarritoExtra]    = useState([]);
   const [pedidoCancelar,  setPedidoCancelar]  = useState(null); // doble check
   const [expandidos,      setExpandidos]      = useState({}); // {pedidoId: true/false}
+  const [modalCobro,      setModalCobro]      = useState(null); // {pedido, billete, cambio}
   const toggleExpandir = id => setExpandidos(prev => ({...prev, [id]: !prev[id]}));
 
   const cols = [
@@ -554,6 +555,101 @@ function Central({ pedidos, onUpdate, onCancelar, onAgregarAl, onMarcarItem, men
   return (
     <div>
       <div style={S.centralDate}>📅 {getToday()}</div>
+
+      {/* Modal cobro con cambio */}
+      {modalCobro && (()=>{
+        const total = modalCobro.pedido.total || 0;
+        const billete = parseFloat(modalCobro.billete) || 0;
+        const cambio = billete >= total ? billete - total : null;
+        const billetesPredefinidos = [50,100,200,500,1000].filter(b=>b>=total);
+        return (
+          <div style={M.overlay} onClick={e=>{ if(e.target===e.currentTarget) setModalCobro(null); }}>
+            <div style={{...M.box,maxHeight:"85vh"}}>
+              <div style={M.header}>
+                <div style={{flex:1}}>
+                  <div style={{fontWeight:800,fontSize:17,color:"#1D6F42"}}>💰 Cobrar pedido</div>
+                  <div style={{fontSize:13,color:"#aaa"}}>
+                    #{modalCobro.pedido.idDia||String(modalCobro.pedido.ts||"").slice(-4)} — {modalCobro.pedido.mesa||"Sin mesa"}
+                  </div>
+                </div>
+                <button style={M.closeBtn} onClick={()=>setModalCobro(null)}>✕</button>
+              </div>
+              <div style={M.body}>
+                {/* Total a cobrar */}
+                <div style={{textAlign:"center",marginBottom:20,padding:"16px 0",background:"#111",borderRadius:12,border:"1px solid #1D6F42"}}>
+                  <div style={{color:"#aaa",fontSize:13,marginBottom:4}}>Total a cobrar</div>
+                  <div style={{fontSize:36,fontWeight:900,color:"#1D6F42"}}>{fmt(total)}</div>
+                </div>
+
+                {/* Billetes rápidos */}
+                <div style={{marginBottom:14}}>
+                  <div style={{fontSize:12,color:"#888",fontWeight:700,marginBottom:8,textTransform:"uppercase",letterSpacing:"0.4px"}}>Billetes rápidos</div>
+                  <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
+                    {billetesPredefinidos.map(b=>(
+                      <button key={b}
+                        style={{padding:"8px 16px",borderRadius:10,border:`2px solid ${parseFloat(modalCobro.billete)===b?"#E85D04":"#444"}`,
+                          background:parseFloat(modalCobro.billete)===b?"#E85D04":"#242424",
+                          color:"#fff",fontWeight:700,fontSize:14,cursor:"pointer"}}
+                        onClick={()=>setModalCobro(prev=>({...prev,billete:String(b)}))}>
+                        ${b}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Input manual */}
+                <div style={{marginBottom:16}}>
+                  <div style={{fontSize:12,color:"#888",fontWeight:700,marginBottom:6,textTransform:"uppercase",letterSpacing:"0.4px"}}>O escribe la cantidad recibida</div>
+                  <input
+                    type="number"
+                    placeholder="Ej: 150"
+                    value={modalCobro.billete}
+                    onChange={e=>setModalCobro(prev=>({...prev,billete:e.target.value}))}
+                    style={{width:"100%",background:"#111",border:"1px solid #444",color:"#fff",borderRadius:8,padding:"12px 14px",fontSize:18,fontWeight:700}}
+                  />
+                </div>
+
+                {/* Cambio */}
+                {modalCobro.billete !== "" && (
+                  <div style={{textAlign:"center",padding:"14px 0",borderRadius:12,
+                    background: cambio !== null ? "rgba(6,214,160,0.1)" : "rgba(239,35,60,0.1)",
+                    border: `1px solid ${cambio !== null ? "#06D6A0" : "#EF233C"}`,marginBottom:4}}>
+                    {cambio !== null ? (
+                      <>
+                        <div style={{color:"#aaa",fontSize:12,marginBottom:4}}>Cambio a devolver</div>
+                        <div style={{fontSize:40,fontWeight:900,color:"#06D6A0"}}>{fmt(cambio)}</div>
+                      </>
+                    ) : (
+                      <>
+                        <div style={{color:"#EF233C",fontSize:14,fontWeight:700}}>⚠️ El billete no alcanza</div>
+                        <div style={{color:"#aaa",fontSize:12,marginTop:4}}>Faltan {fmt(total - billete)}</div>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+              <div style={M.footer}>
+                <div style={{display:"flex",gap:10}}>
+                  <button
+                    style={{flex:1,padding:"13px 0",borderRadius:12,border:"2px solid #444",background:"#2a2a2a",color:"#ccc",fontWeight:700,fontSize:14,cursor:"pointer"}}
+                    onClick={()=>setModalCobro(null)}>
+                    ✕ Cancelar
+                  </button>
+                  <button
+                    style={{flex:2,padding:"13px 0",borderRadius:12,border:"none",
+                      background: cambio !== null || modalCobro.billete==="" ? "#1D6F42" : "#555",
+                      color:"#fff",fontWeight:800,fontSize:15,cursor:"pointer",
+                      opacity: (cambio===null && modalCobro.billete!=="") ? 0.5 : 1}}
+                    disabled={cambio===null && modalCobro.billete!==""}
+                    onClick={()=>{ onUpdate(modalCobro.pedido.id,"cobrado"); setModalCobro(null); }}>
+                    ✅ Confirmar cobro
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Doble check para cancelar */}
       {pedidoCancelar && (
@@ -759,7 +855,14 @@ function Central({ pedidos, onUpdate, onCancelar, onAgregarAl, onMarcarItem, men
                   {!esCobrado && (
                     <div style={S.cardAcc}>
                       {col.acc.map(a=>(
-                        <button key={a.e} style={{...S.accBtn,background:a.c}} onClick={()=>onUpdate(p.id,a.e)}>{a.l}</button>
+                        <button key={a.e} style={{...S.accBtn,background:a.c}}
+                          onClick={()=>{
+                            if (a.e==="cobrado") {
+                              setModalCobro({ pedido: p, billete: "", cambio: null });
+                            } else {
+                              onUpdate(p.id, a.e);
+                            }
+                          }}>{a.l}</button>
                       ))}
                       {/* ➕ disponible en todas las etapas excepto cobrado */}
                       <button style={{...S.accBtn,background:"#9D4EDD"}}
