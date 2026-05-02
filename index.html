@@ -459,6 +459,8 @@ function App() {
   }, [menu]);
 
   // Al agregar items: los existentes conservan su estado, nuevos se marcan esNuevo:true
+  // Si los nuevos son SOLO bebidas → el pedido NO cambia de estado (se queda donde estaba)
+  // Si hay aunque sea UN platillo de comida → el pedido vuelve a pendientes para que cocina lo vea
   const agregarAlPedido = useCallback((id, pedidoActual, itemsNuevos) => {
     const estabaEntregado = pedidoActual.estado === "entregado" || pedidoActual.estado === "cobrado";
     const itemsViejos = (pedidoActual.items||[]).map(i=>({
@@ -466,17 +468,31 @@ function App() {
       esNuevo: false,
       entregado: estabaEntregado ? true : i.entregado
     }));
-    const itemsMarcados = itemsNuevos.map(i=>({...i, entregado:false, esNuevo:true}));
+    // Las bebidas se marcan esNuevo:false (ya listas, no van a cocina)
+    // La comida se marca esNuevo:true (necesita preparación)
+    const hayComida = itemsNuevos.some(i => {
+      const nombreBase = (i.nombre||"").split(" (")[0].trim();
+      const datosMenu  = menu[nombreBase];
+      return datosMenu ? datosMenu.categoria === "comida" : true; // si no está en menú, asumir comida
+    });
+    const itemsMarcados = itemsNuevos.map(i => {
+      const nombreBase = (i.nombre||"").split(" (")[0].trim();
+      const datosMenu  = menu[nombreBase];
+      const esBebida   = datosMenu ? datosMenu.categoria === "bebida" : false;
+      return { ...i, entregado: false, esNuevo: !esBebida }; // bebidas no van a cocina
+    });
     const items = [...itemsViejos, ...itemsMarcados];
     const total = items.reduce((s,i)=>s+(i.subtotal||0),0);
-    // El pedido vuelve a pendiente para que cocina vea los nuevos, y se encola AL FINAL (ts actualizado)
-    db.ref(`pedidos/${id}`).update({
-      items, total, estado:"pendiente",
-      ts: Date.now(),
-      actualizado: new Date().toLocaleTimeString("es-MX",{hour:"2-digit",minute:"2-digit"})
-    });
-    showNotif("✅ Productos añadidos — pedido encolado al final de pendientes");
-  }, []);
+    const nuevoEstado = hayComida ? "pendiente" : pedidoActual.estado;
+    const update = { items, total, estado: nuevoEstado,
+      actualizado: new Date().toLocaleTimeString("es-MX",{hour:"2-digit",minute:"2-digit"}) };
+    if (hayComida) update.ts = Date.now(); // encolar al final solo si hay comida
+    db.ref(`pedidos/${id}`).update(update);
+    const msg = hayComida
+      ? "✅ Productos añadidos — comida encolada en pendientes"
+      : "✅ Bebidas añadidas — pedido se queda en su lugar";
+    showNotif(msg);
+  }, [menu]);
 
   const marcarItemEntregado = useCallback((id, pedidoActual, itemIdx) => {
     const items = (pedidoActual.items||[]).map((it,i)=> i===itemIdx ? {...it,entregado:true,esNuevo:false} : it);
