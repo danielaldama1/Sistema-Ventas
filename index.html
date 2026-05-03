@@ -984,10 +984,19 @@ function Central({ pedidos, onUpdate, onCancelar, onAgregarAl, onMarcarItem, onE
                         const partes = item.nombre.includes("(")
                           ? item.nombre.slice(item.nombre.indexOf("(")+1, item.nombre.lastIndexOf(")")).split("|").map(s=>s.trim())
                           : [];
-                        const nombreBase     = item.nombre.split(" (")[0].trim();
-                        const tipo           = partes[0] || null;
-                        const extraQueso     = partes.find(p=>p.includes("Extra Queso")) || null;
-                        const complementos   = partes.filter(p=>p!==tipo && !p.includes("Extra Queso")).join(", ");
+                        const nombreBase = item.nombre.split(" (")[0].trim();
+                        // partes: [variante, rellenos, sabor, extras("Extra Queso, Cebolla..."), nota]
+                        // Necesitamos separar Extra Queso del resto de complementos
+                        const todasPartes = partes.flatMap(p =>
+                          p.includes("Extra Queso") ? p.split(",").map(s=>s.trim()) : [p]
+                        );
+                        const tipo        = todasPartes[0] || null;
+                        const extraQueso  = todasPartes.find(p=>p.includes("Extra Queso")) || null;
+                        // complementos = todo menos tipo y Extra Queso (rellenos, sabor, otros extras, nota)
+                        const complementos = todasPartes
+                          .filter(p => p && p!==tipo && !p.includes("Extra Queso"))
+                          .join(", ");
+                        // Orden final: Nombre | Tipo | Extra Queso | complementos
                         const lineaPrincipal = [nombreBase, tipo, extraQueso, complementos||null].filter(Boolean).join(" | ");
 
                         if (esVistaLimpia) {
