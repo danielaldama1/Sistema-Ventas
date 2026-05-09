@@ -68,8 +68,10 @@ const MENU_DEFAULT = {
   },
   "Enchiladas": {
     icon:"🌯", color:"#C1121F", categoria:"comida", precio:55,
-    variantes:["Sencillas","Pollo","Suadero","Otro"],
-    extras:["Crema","Cebolla","Cilantro","Lechuga","Extra Queso +$5"]
+    variantes:["Verdes","Rojos"],
+    rellenos:["Pollo","Suadero","Campechanos","Huevo"],
+    extras:["Cebolla","Crema","Queso","Extra Queso +$5"],
+    multiRelleno: true
   },
   "Tacos": {
     icon:"🌮", color:"#F48C06", categoria:"comida", precio:28, unidad:"c/u",
@@ -112,7 +114,7 @@ const MENU_DEFAULT = {
   "Agua": {
     icon:"💧", color:"#00B4D8", categoria:"bebida",
     variantes:["1/2 L","1 L"],
-    sabores:["Horchata","Jamaica","Limón","Tamarindo"],
+    sabores:["Horchata"],
     precios:{"1/2 L":25,"1 L":35}
   },
   "Café": {
