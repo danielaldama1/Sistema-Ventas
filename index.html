@@ -9,7 +9,16 @@
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+  <script src="https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script>
+    window.onerror = function(msg, src, line, col, err) {
+      document.getElementById('root').innerHTML =
+        '<div style="color:#EF233C;background:#1a1a1a;padding:30px;font-family:monospace;font-size:14px;border-radius:12px;margin:20px">' +
+        '<b>Error de JavaScript:</b><br>' + msg + '<br><br>' +
+        '<span style="color:#aaa">Línea: ' + line + ' · Col: ' + col + '</span>' +
+        '</div>';
+    };
+  </script>
   <style>
     * { box-sizing: border-box; }
     body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #0F0F0F; }
@@ -25,9 +34,7 @@
 <script type="text/babel">
 const { useState, useEffect, useCallback } = React;
 
-// ══════════════════════════════════════════════════════
-// FIREBASE
-// ══════════════════════════════════════════════════════
+// ── FIREBASE ──────────────────────────────────────────
 firebase.initializeApp({
   apiKey: "AIzaSyBmRE258LdtlR5jAo3ChN9jG94C3MsMI68",
   authDomain: "sistema-ventas-4ae00.firebaseapp.com",
@@ -35,231 +42,137 @@ firebase.initializeApp({
   projectId: "sistema-ventas-4ae00",
   storageBucket: "sistema-ventas-4ae00.firebasestorage.app",
   messagingSenderId: "774049154998",
-  appId: "1:774049154998:web:6a5e9297dc52abf3cc2317",
-  measurementId: "G-XGKJ9F7XCJ"
+  appId: "1:774049154998:web:6a5e9297dc52abf3cc2317"
 });
 const db = firebase.database();
 
-// ══════════════════════════════════════════════════════
-// USUARIOS
-// ══════════════════════════════════════════════════════
-const USUARIOS = {
-  "Pao": { pass:"123", rol:"mesero" },
-  "Mily": { pass:"123", rol:"mesero" },
-  "Dan": { pass:"123", rol:"mesero" },
-  "tablero": { pass:"123", rol:"tablero" },
-  "admin":   { pass:"Angeles14", rol:"admin" },
+// ── CONSTANTES ────────────────────────────────────────
+const USUARIOS_BASE = {
+  "mesero": { pass:"mesa2024", rol:"mesero" },
+  "admin":  { pass:"Angeles14", rol:"admin" },
 };
-const PRECIO_EXTRA_QUESO = 5;
-// Rellenos extra: chilaquiles cobra $6 por cada relleno adicional al primero,
-// gorditas cobra $5 por cada relleno (desde el primero)
-const PRECIO_RELLENO_CHILAQUILES = 6; // se cobra desde el 2do relleno
-const PRECIO_RELLENO_GORDITAS    = 5; // se cobra desde el 1er relleno
+const PRECIO_EXTRA_QUESO      = 5;
+const PRECIO_RELLENO_CHILA    = 6;
+const PRECIO_RELLENO_GORDITAS = 5;
+const ORDEN_COMIDA = ["Quesadillas","Pambazos","Gorditas","Enchiladas","Tacos","Huaraches","Pancita","Chilaquiles","Pan de Dulce","Pan Blanco"];
 
-// ══════════════════════════════════════════════════════
-// MENÚ DEFAULT
-// ══════════════════════════════════════════════════════
+// ── MENÚ DEFAULT ──────────────────────────────────────
 const MENU_DEFAULT = {
-  "Chilaquiles": {
-    icon:"🍳", color:"#E85D04", categoria:"comida", precio:55,
-    variantes:["Verdes","Rojos"],
-    rellenos:["Pollo","Suadero","Campechanos","Huevo"],
-    extras:["Cebolla","Crema","Queso","Extra Queso +$5"],
-    multiRelleno: true
-  },
-  "Enchiladas": {
-    icon:"🌯", color:"#C1121F", categoria:"comida", precio:55,
-    variantes:["Verdes","Rojos"],
-    rellenos:["Pollo","Suadero","Campechanos","Huevo"],
-    extras:["Cebolla","Crema","Queso","Extra Queso +$5"],
-    multiRelleno: true
-  },
-  "Tacos": {
-    icon:"🌮", color:"#F48C06", categoria:"comida", precio:28, unidad:"c/u",
-    variantes:["Suadero","Longaniza","Campechanos"],
-    extras:["Nopales","Papas","Cebolla","Cilantro","Extra Queso +$5"]
-  },
-  "Pambazos": {
-    icon:"🥙", color:"#DC2F02", categoria:"comida", precio:28,
-    variantes:["Papa con Longaniza","Chicharrón","Queso","Tinga","Hongos","Suadero"],
-    extras:["Lechuga","Crema","Queso","Extra Queso +$5"]
-  },
-  "Quesadillas": {
-    icon:"🫓", color:"#9D4EDD", categoria:"comida", precio:30,
-    variantes:["Chicharrón","Queso","Tinga","Papa con Longaniza","Hongos","Suadero","Otro"],
-    extras:["Lechuga","Crema","Queso","Extra Queso +$5"]
-  },
-  "Huaraches": {
-    icon:"🫔", color:"#3A86FF", categoria:"comida", precio:40,
-    variantes:["Suadero","Longaniza","Campechanos","Otro"],
-    extras:["Cebolla","Lechuga","Queso","Extra Queso +$5"]
-  },
-  "Gorditas": {
-    icon:"🫔", color:"#06D6A0", categoria:"comida", precio:25,
-    variantes:["Sola","Suadero","Otro"],
-    extras:["Cilantro","Cebolla","Queso","Extra Queso +$5"],
-    multiRelleno: true
-  },
-  "Pan de Dulce": {
-    icon:"🍩", color:"#C77DFF", categoria:"comida", precio:13
-  },
-  "Pan Blanco": {
-    icon:"🍞", color:"#F5CBA7", categoria:"comida", precio:5
-  },
-  "Pay de Limón": {
-    icon:"🍋", color:"#A8D5A2", categoria:"postre", precio:25
-  },
-  "Flan": {
-    icon:"🍮", color:"#F4A261", categoria:"postre", precio:30
-  },
-  "Agua": {
-    icon:"💧", color:"#00B4D8", categoria:"bebida",
-    variantes:["1/2 L","1 L"],
-    sabores:["Horchata"],
-    precios:{"1/2 L":25,"1 L":35}
-  },
-  "Café": {
-    icon:"☕", color:"#6F4E37", categoria:"bebida",
-    variantes:["1/4 L","1/2 L","1 L"],
-    extras:["Con leche","Sin azúcar","Con piloncillo"],
-    precios:{"1/4 L":20,"1/2 L":35,"1 L":70}
-  },
-  "Atole": {
-    icon:"🥛", color:"#F4A261", categoria:"bebida",
-    variantes:["1/4 L","1/2 L","1 L"],
-    sabores:["Chocolate"],
-    precios:{"1/4 L":28,"1/2 L":50,"1 L":85}
-  },
-  "Refresco": {
-    icon:"🥤", color:"#EF233C", categoria:"bebida",
-    variantes:["Coca-Cola","Boing","Otro"],
-    precios:{"Coca-Cola":25,"Boing":25,"Otro":25}
-  },
-  "Limonada": {
-    icon:"🍋", color:"#F9C74F", categoria:"bebida",
-    variantes:["Natural 1/2 L","Natural 1 L","Mineral 1/2 L","Mineral 1 L"],
-    precios:{"Natural 1/2 L":35,"Natural 1 L":75,"Mineral 1/2 L":35,"Mineral 1 L":75}
-  },
-  "Michelada": {
-    icon:"🍺", color:"#FFBA08", categoria:"bebida",
-    variantes:["Corona 1/2 L","Corona 1 L","Victoria 1/2 L","Victoria 1 L"],
-    extras:["Clamato","Naranja","Tamarindo","Limón","Salsas","Todo","Solo Limón y Sal"],
-    precios:{"Corona 1/2 L":50,"Corona 1 L":90,"Victoria 1/2 L":50,"Victoria 1 L":90}
-  },
-  "Mojito": {
-    icon:"🍹", color:"#40916C", categoria:"bebida",
-    variantes:["Limón 1/2 L","Limón 1 L","Fresa 1/2 L","Fresa 1 L","Frutos Rojos 1/2 L","Frutos Rojos 1 L"],
-    extras:["Escarchado","Doble"],
-    precios:{"Limón 1/2 L":60,"Limón 1 L":100,"Fresa 1/2 L":60,"Fresa 1 L":100,"Frutos Rojos 1/2 L":70,"Frutos Rojos 1 L":120}
-  },
-  "Caguama": {
-    icon:"🍻", color:"#B5830A", categoria:"bebida",
-    variantes:["Corona","Victoria"],
-    precios:{"Corona":55,"Victoria":55}
-  },
-  "Vasos": {
-    icon:"🥛", color:"#ADB5BD", categoria:"bebida",
-    precio:1
-  },
+  "Chilaquiles":  { icon:"🍳", color:"#E85D04", categoria:"comida", precio:55,  variantes:["Verdes","Rojos"], rellenos:["Pollo","Suadero","Campechanos","Huevo"], extras:["Cebolla","Crema","Queso","Extra Queso +$5"], multiRelleno:true },
+  "Enchiladas":   { icon:"🌯", color:"#C1121F", categoria:"comida", precio:55,  variantes:["Sencillas","Pollo","Suadero","Otro"], extras:["Crema","Cebolla","Cilantro","Lechuga","Extra Queso +$5"] },
+  "Tacos":        { icon:"🌮", color:"#F48C06", categoria:"comida", precio:30,  variantes:["Suadero","Longaniza","Campechanos","Mixtos"], extras:["Nopales","Papas","Cebolla","Cilantro","Extra Queso +$5"], unidad:"c/u" },
+  "Pambazos":     { icon:"🥙", color:"#DC2F02", categoria:"comida", precio:30,  variantes:["Chicharrón","Queso","Tinga","Papa con Longaniza","Hongos","Suadero"], extras:["Lechuga","Crema","Queso","Extra Queso +$5"] },
+  "Quesadillas":  { icon:"🫓", color:"#9D4EDD", categoria:"comida", precio:30,  variantes:["Chicharrón","Queso","Tinga","Papa con Longaniza","Hongos","Suadero"], extras:["Lechuga","Crema","Queso","Extra Queso +$5"] },
+  "Huaraches":    { icon:"🫔", color:"#3A86FF", categoria:"comida", precio:40,  variantes:["Suadero","Longaniza","Campechanos","Otro"], extras:["Cebolla","Lechuga","Queso","Guacamole","Extra Queso +$5"] },
+  "Gorditas":     { icon:"🫔", color:"#06D6A0", categoria:"comida", precio:25,  variantes:["Suadero","Longaniza","Chicharrón","Queso","Otro"], extras:["Cilantro","Cebolla","Queso","Extra Queso +$5"] },
+  "Pancita":      { icon:"🫕", color:"#8B1A1A", categoria:"comida", variantes:["Plato Grande","Plato Chico"], precios:{"Plato Grande":110,"Plato Chico":80} },
+  "Pan de Dulce": { icon:"🍩", color:"#C77DFF", categoria:"comida", precio:12 },
+  "Pan Blanco":   { icon:"🍞", color:"#F5CBA7", categoria:"comida", precio:5  },
+  "Agua":         { icon:"💧", color:"#00B4D8", categoria:"bebida", variantes:["1/2 L","1 L"], sabores:["Horchata","Jamaica","Limón","Tamarindo"], precios:{"1/2 L":25,"1 L":35} },
+  "Café":         { icon:"☕", color:"#6F4E37", categoria:"bebida", variantes:["1/4 L","1/2 L","1 L"], extras:["Con leche","Sin azúcar","Con piloncillo"], precios:{"1/4 L":20,"1/2 L":37,"1 L":70} },
+  "Atole":        { icon:"🥛", color:"#F4A261", categoria:"bebida", variantes:["1/4 L","1/2 L","1 L"], sabores:["Chocolate","Guayaba","Fresa","Vainilla"], precios:{"1/4 L":25,"1/2 L":45,"1 L":85} },
+  "Refresco":     { icon:"🥤", color:"#EF233C", categoria:"bebida", variantes:["Coca-Cola","Boing","Otro"], precios:{"Coca-Cola":25,"Boing":25,"Otro":25} },
+  "Limonada":     { icon:"🍋", color:"#F9C74F", categoria:"bebida", variantes:["Natural 1/2 L","Natural 1 L","Mineral 1/2 L","Mineral 1 L"], precios:{"Natural 1/2 L":35,"Natural 1 L":75,"Mineral 1/2 L":35,"Mineral 1 L":75} },
+  "Michelada":    { icon:"🍺", color:"#FFBA08", categoria:"bebida", variantes:["Corona 1/2 L","Corona 1 L","Victoria 1/2 L","Victoria 1 L"], extras:["Clamato","Naranja","Tamarindo","Limón","Salsas","Todo","Solo Limón y Sal"], precios:{"Corona 1/2 L":45,"Corona 1 L":90,"Victoria 1/2 L":45,"Victoria 1 L":90} },
+  "Mojito":       { icon:"🍹", color:"#40916C", categoria:"bebida", variantes:["Limón 1/2 L","Limón 1 L","Fresa 1/2 L","Fresa 1 L","Frutos Rojos 1/2 L","Frutos Rojos 1 L"], extras:["Escarchado","Doble"], precios:{"Limón 1/2 L":60,"Limón 1 L":100,"Fresa 1/2 L":60,"Fresa 1 L":100,"Frutos Rojos 1/2 L":70,"Frutos Rojos 1 L":120} },
+  "Caguama":      { icon:"🍻", color:"#B5830A", categoria:"bebida", variantes:["Corona","Victoria"], precios:{"Corona":55,"Victoria":55} },
+  "Vasos":        { icon:"🥛", color:"#ADB5BD", categoria:"bebida", precio:1 },
 };
 
-// ══════════════════════════════════════════════════════
-// HELPERS
-// ══════════════════════════════════════════════════════
+// ── HELPERS ───────────────────────────────────────────
 const getTodayKey = () => {
   const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
 };
 const getToday = () => new Date().toLocaleDateString("es-MX",{weekday:"long",year:"numeric",month:"long",day:"numeric"});
-const fmt = n => `$${Number(n||0).toFixed(0)}`;
-const getPrecio = (datos, variante) => {
-  if (datos.precios && variante && datos.precios[variante] !== undefined) return datos.precios[variante];
-  return datos.precio || 0;
+const fmt = n => "$"+Number(n||0).toFixed(0);
+const getPrecio = (d, v) => {
+  if (d.precios && v && d.precios[v] !== undefined) return d.precios[v];
+  return d.precio || 0;
 };
-const calcSubtotal = (precioBase, cantidad, extras=[], rellenos=[], nombreProducto="") => {
-  const tieneExtraQueso = extras.some(e => e.includes("Extra Queso"));
-  let cargoRellenos = 0;
-  if (nombreProducto === "Chilaquiles") {
-    // 1er relleno gratis, cada adicional cuesta $6
-    cargoRellenos = Math.max(0, rellenos.length - 1) * PRECIO_RELLENO_CHILAQUILES;
-  } else if (nombreProducto === "Gorditas") {
-    // cada relleno cuesta $5
-    cargoRellenos = rellenos.length * PRECIO_RELLENO_GORDITAS;
-  }
-  return (precioBase + (tieneExtraQueso ? PRECIO_EXTRA_QUESO : 0) + cargoRellenos) * cantidad;
+const calcSubtotal = (base, cant, extras, rellenos, nombre) => {
+  const xq = (extras||[]).some(e => e.includes("Extra Queso")) ? PRECIO_EXTRA_QUESO : 0;
+  let xr = 0;
+  if (nombre === "Chilaquiles") xr = Math.max(0,(rellenos||[]).length-1)*PRECIO_RELLENO_CHILA;
+  if (nombre === "Gorditas")    xr = (rellenos||[]).length*PRECIO_RELLENO_GORDITAS;
+  return (base + xq + xr) * cant;
 };
-
-// Obtener el siguiente ID consecutivo del día desde Firebase
 const getSiguienteId = async () => {
   const hoy = getTodayKey();
-  const counterRef = db.ref(`contadores/${hoy}`);
-  const snap = await counterRef.once("value");
-  const actual = snap.val() || 0;
-  const siguiente = actual + 1;
-  await counterRef.set(siguiente);
-  return siguiente;
+  const r = db.ref("contadores/"+hoy);
+  const snap = await r.once("value");
+  const n = (snap.val()||0)+1;
+  await r.set(n);
+  return n;
+};
+const ordenarItems = (items, menu) => {
+  return [...items].sort((a,b) => {
+    const nb = n => n.split(" (")[0].trim();
+    const pri = item => {
+      const nm = nb(item.nombre);
+      const i  = ORDEN_COMIDA.indexOf(nm);
+      if (i >= 0) return i;
+      return menu[nm] && menu[nm].categoria==="comida" ? 900 : 1000;
+    };
+    return pri(a)-pri(b);
+  });
 };
 
-// ══════════════════════════════════════════════════════
-// EXPORTAR EXCEL
-// ══════════════════════════════════════════════════════
-function exportarExcel(pedidos) {
-  const hoy = getTodayKey();
-  const pedidosHoy = pedidos.filter(p => p.fecha === hoy && p.estado !== "cancelado");
-  const resumen = pedidosHoy.map(p => ({
-    "ID": p.idDia ? `#${p.idDia}` : `#${String(p.ts||"").slice(-4)}`,
-    "Mesa/Cliente": p.mesa || "Sin mesa",
-    "Mesero": p.mesero || "",
-    "Tipo": p.tipoServicio==="llevar"?"Para llevar":"En sitio",
-    "Hora": p.hora || "",
-    "Estado": p.estado || "",
-    "Total ($)": p.total || 0,
+// ── EXCEL ─────────────────────────────────────────────
+function exportarExcel(pedidos, fecha) {
+  const pp = pedidos.filter(p => p.fecha===fecha && p.estado!=="cancelado");
+  const resumen = pp.map(p => ({
+    "ID":            p.idDia ? "#"+p.idDia : "#"+String(p.ts||"").slice(-4),
+    "Mesa/Cliente":  p.mesa||"Sin mesa",
+    "Mesero":        p.mesero||"",
+    "Tipo":          p.tipoServicio==="llevar"?"Para llevar":"En sitio",
+    "Hora":          p.hora||"",
+    "Estado":        p.estado||"",
+    "Total ($)":     p.total||0,
   }));
   const detalle = [];
-  pedidosHoy.forEach(p => {
+  pp.forEach(p => {
     (p.items||[]).forEach(item => {
       detalle.push({
-        "ID Pedido": p.idDia ? `#${p.idDia}` : `#${String(p.ts||"").slice(-4)}`,
-        "Mesa/Cliente": p.mesa || "Sin mesa",
-        "Hora": p.hora || "",
-        "Producto": item.nombre || "",
-        "Cantidad": item.cantidad || 1,
-        "Subtotal ($)": item.subtotal || 0,
-        "Entregado": item.entregado ? "Sí" : "No",
+        "ID Pedido":    p.idDia ? "#"+p.idDia : "#"+String(p.ts||"").slice(-4),
+        "Mesa/Cliente": p.mesa||"Sin mesa",
+        "Hora":         p.hora||"",
+        "Producto":     item.nombre||"",
+        "Cantidad":     item.cantidad||1,
+        "Subtotal ($)": item.subtotal||0,
+        "Entregado":    item.entregado?"Sí":"No",
       });
     });
   });
-  const totalDia = pedidosHoy.reduce((s,p)=>s+(p.total||0),0);
+  const total = pp.reduce((s,p)=>s+(p.total||0),0);
   const totales = [
-    { "Concepto":"Total ventas del día", "Valor ($)":totalDia },
-    { "Concepto":"Número de pedidos",    "Valor ($)":pedidosHoy.length },
-    { "Concepto":"Ticket promedio",      "Valor ($)":pedidosHoy.length?Math.round(totalDia/pedidosHoy.length):0 },
-    { "Concepto":"Pedidos cancelados",   "Valor ($)":pedidos.filter(p=>p.fecha===hoy&&p.estado==="cancelado").length },
+    {"Concepto":"Fecha",             "Valor":fecha},
+    {"Concepto":"Total ventas",      "Valor":total},
+    {"Concepto":"Número de pedidos", "Valor":pp.length},
+    {"Concepto":"Ticket promedio",   "Valor":pp.length?Math.round(total/pp.length):0},
+    {"Concepto":"Cancelados",        "Valor":pedidos.filter(p=>p.fecha===fecha&&p.estado==="cancelado").length},
   ];
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(resumen), "Pedidos del Día");
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(detalle), "Detalle Productos");
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(totales), "Resumen General");
-  XLSX.writeFile(wb, `BenditoAntojo_${hoy}.xlsx`);
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(resumen),  "Pedidos");
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(detalle),  "Detalle");
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(totales),  "Resumen");
+  XLSX.writeFile(wb, "BenditoAntojo_"+fecha+".xlsx");
 }
 
-// ══════════════════════════════════════════════════════
-// LOGIN DEL SISTEMA
-// ══════════════════════════════════════════════════════
+// ── LOGIN SISTEMA ─────────────────────────────────────
 function LoginSistema({ onLogin }) {
   const [usuario, setUsuario] = useState("");
   const [pass,    setPass]    = useState("");
   const [error,   setError]   = useState("");
   const intentar = async () => {
     const key = usuario.toLowerCase().trim();
-    // Check hardcoded users first
-    const uHard = USUARIOS[key];
-    if (uHard && uHard.pass === pass) { onLogin({ usuario: key, rol: uHard.rol }); return; }
-    // Check Firebase users
-    const snap = await db.ref(`usuarios/${key}`).once("value");
-    const uFb  = snap.val();
-    if (uFb && uFb.pass === pass) { onLogin({ usuario: key, rol: uFb.rol }); return; }
-    setError("Usuario o contraseña incorrectos"); setTimeout(()=>setError(""),2500);
+    const ub  = USUARIOS_BASE[key];
+    if (ub && ub.pass===pass) { onLogin({usuario:key,rol:ub.rol}); return; }
+    const snap = await db.ref("usuarios/"+key).once("value");
+    const uf   = snap.val();
+    if (uf && uf.pass===pass) { onLogin({usuario:key,rol:uf.rol}); return; }
+    setError("Usuario o contraseña incorrectos");
+    setTimeout(()=>setError(""),2500);
   };
   return (
     <div style={{minHeight:"100vh",background:"#0F0F0F",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
@@ -267,11 +180,11 @@ function LoginSistema({ onLogin }) {
         <div style={{fontSize:56,marginBottom:8}}>🌮</div>
         <h2 style={{color:"#E85D04",margin:"0 0 4px",fontSize:22}}>Bendito Antojo</h2>
         <p style={{color:"#666",fontSize:13,margin:"0 0 24px"}}>Sistema de Ventas</p>
-        <input style={{...SL.input,marginBottom:10}} placeholder="Usuario" value={usuario}
+        <input style={{...SL.inp,marginBottom:10}} placeholder="Usuario" value={usuario}
           onChange={e=>setUsuario(e.target.value)} onKeyDown={e=>e.key==="Enter"&&intentar()}/>
-        <input type="password" style={{...SL.input,marginBottom:error?8:16}} placeholder="Contraseña" value={pass}
+        <input type="password" style={{...SL.inp,marginBottom:error?8:16}} placeholder="Contraseña" value={pass}
           onChange={e=>setPass(e.target.value)} onKeyDown={e=>e.key==="Enter"&&intentar()}/>
-        {error && <div style={{color:"#EF233C",fontSize:13,marginBottom:12}}>❌ {error}</div>}
+        {error && <div style={{color:"#EF233C",fontSize:13,marginBottom:12}}>{"❌ "+error}</div>}
         <button style={SL.btn} onClick={intentar}>Entrar →</button>
         <p style={{color:"#444",fontSize:11,marginTop:16,marginBottom:0}}>Contacta al administrador si no tienes acceso</p>
       </div>
@@ -279,72 +192,55 @@ function LoginSistema({ onLogin }) {
   );
 }
 const SL = {
-  input:{ display:"block",width:"100%",padding:"12px 14px",background:"#111",border:"1px solid #333",borderRadius:10,color:"#fff",fontSize:15 },
+  inp:{ display:"block",width:"100%",padding:"12px 14px",background:"#111",border:"1px solid #333",borderRadius:10,color:"#fff",fontSize:15 },
   btn:{ display:"block",width:"100%",background:"#E85D04",color:"#fff",border:"none",borderRadius:12,padding:"13px 0",fontWeight:800,fontSize:16,cursor:"pointer" },
 };
 
-// ══════════════════════════════════════════════════════
-// MODAL PERSONALIZACIÓN
-// ══════════════════════════════════════════════════════
-function ModalProducto({ producto, nombre, onConfirmar, onCerrar, sinOverlay }) {
+// ── MODAL PRODUCTO ────────────────────────────────────
+function ModalProducto({ nombre, producto, onConfirmar, onCerrar }) {
   const d = producto;
-  const [variante,  setVariante]  = useState(d.variantes?.[0] || null);
-  // Chilaquiles (multiRelleno) permite selección múltiple de rellenos
-  const [rellenos,  setRellenos]  = useState(d.rellenos ? [d.rellenos[0]] : []);
-  const [sabor,     setSabor]     = useState(d.sabores?.[0] || null);
-  const [extras,    setExtras]    = useState([]);
-  const [cantidad,  setCantidad]  = useState(1);
-  const [nota,      setNota]      = useState("");
+  const [variante, setVariante] = useState(d.variantes?.[0]||null);
+  const [rellenos, setRellenos] = useState(d.rellenos?[d.rellenos[0]]:[]);
+  const [sabor,    setSabor]    = useState(d.sabores?.[0]||null);
+  const [extras,   setExtras]   = useState([]);
+  const [cantidad, setCantidad] = useState(1);
+  const [nota,     setNota]     = useState("");
 
-  const toggleExtra  = ex => setExtras(prev => prev.includes(ex) ? prev.filter(e=>e!==ex) : [...prev,ex]);
-  const toggleRellen = r  => {
-    if (d.multiRelleno) {
-      setRellenos(prev => prev.includes(r) ? prev.filter(x=>x!==r) : [...prev,r]);
-    } else {
-      setRellenos([r]);
-    }
+  const toggleExtra   = ex => setExtras(prev=>prev.includes(ex)?prev.filter(e=>e!==ex):[...prev,ex]);
+  const toggleRelleno = r  => {
+    if (d.multiRelleno) setRellenos(prev=>prev.includes(r)?prev.filter(x=>x!==r):[...prev,r]);
+    else setRellenos([r]);
   };
-
-  const precioBase = getPrecio(d, variante);
-  const subtotal   = calcSubtotal(precioBase, cantidad, extras, rellenos, nombre);
-  // Cargo extra por rellenos para mostrarlo al usuario
-  const cargoRellenosExtra = nombre === "Chilaquiles"
-    ? Math.max(0, rellenos.length - 1) * PRECIO_RELLENO_CHILAQUILES
-    : nombre === "Gorditas"
-    ? rellenos.length * PRECIO_RELLENO_GORDITAS
-    : 0;
-  const partes     = [
-    variante,
-    rellenos.length ? rellenos.join(" + ") : null,
-    sabor,
-    extras.length ? extras.join(", ") : null,
-    nota||null
-  ].filter(Boolean);
-  const descripcion = `${nombre}${partes.length ? ` (${partes.join(" | ")})` : ""}`;
+  const base     = getPrecio(d, variante);
+  const subtotal = calcSubtotal(base, cantidad, extras, rellenos, nombre);
+  const xrExtra  = nombre==="Chilaquiles" ? Math.max(0,rellenos.length-1)*PRECIO_RELLENO_CHILA
+                 : nombre==="Gorditas"    ? rellenos.length*PRECIO_RELLENO_GORDITAS : 0;
+  const partes   = [variante, rellenos.length?rellenos.join(" + "):null, sabor, extras.length?extras.join(", "):null, nota||null].filter(Boolean);
+  const desc     = nombre+(partes.length?" ("+partes.join(" | ")+")":"");
 
   return (
-    <div style={sinOverlay ? {} : M.overlay} onClick={e=>{ if(!sinOverlay && e.target===e.currentTarget) onCerrar(); }}>
+    <div style={M.overlay} onClick={e=>{ if(e.target===e.currentTarget) onCerrar(); }}>
       <div style={M.box}>
         <div style={M.header}>
           <span style={{fontSize:32}}>{d.icon}</span>
           <div style={{flex:1}}>
             <div style={{fontWeight:800,fontSize:17,color:"#F0EBE3"}}>{nombre}</div>
             <div style={{fontSize:13,color:"#E85D04",fontWeight:700}}>
-              {fmt(precioBase)}{d.unidad?` ${d.unidad}`:""}
+              {fmt(base)}{d.unidad?" "+d.unidad:""}
               {extras.some(e=>e.includes("Extra Queso")) && <span style={{color:"#FFBA08"}}> +$5 queso</span>}
-              {cargoRellenosExtra > 0 && <span style={{color:"#F4A261"}}> +${cargoRellenosExtra} rellenos</span>}
+              {xrExtra>0 && <span style={{color:"#F4A261"}}>{" +"+fmt(xrExtra)+" rellenos"}</span>}
             </div>
           </div>
           <button style={M.closeBtn} onClick={onCerrar}>✕</button>
         </div>
         <div style={M.body}>
-          {d.variantes?.length > 0 && (
+          {d.variantes && d.variantes.length>0 && (
             <div style={M.section}>
-              <div style={M.sectionTitle}>{d.categoria==="bebida"?"🥤 Presentación":"🍽️ Tipo"}</div>
+              <div style={M.stitle}>{d.categoria==="bebida"?"🥤 Presentación":"🍽️ Tipo"}</div>
               <div style={M.chipRow}>
                 {d.variantes.map(v=>(
                   <button key={v} style={{...M.chip,...(variante===v?M.chipOn:{})}} onClick={()=>setVariante(v)}>
-                    {v}{d.precios?.[v]?` · ${fmt(d.precios[v])}`:""}
+                    {v}{d.precios&&d.precios[v]?" · "+fmt(d.precios[v]):""}
                   </button>
                 ))}
               </div>
@@ -352,21 +248,21 @@ function ModalProducto({ producto, nombre, onConfirmar, onCerrar, sinOverlay }) 
           )}
           {d.rellenos && (
             <div style={M.section}>
-              <div style={M.sectionTitle}>
-                🥩 Relleno
-                {nombre==="Chilaquiles" && <span style={{fontSize:11,color:"#F4A261",fontWeight:500,marginLeft:6}}>(1ro gratis · +$6 c/u adicional)</span>}
-                {nombre==="Gorditas"    && <span style={{fontSize:11,color:"#F4A261",fontWeight:500,marginLeft:6}}>(+$5 por relleno)</span>}
+              <div style={M.stitle}>
+                {"🥩 Relleno"}
+                {nombre==="Chilaquiles"&&<span style={{fontSize:11,color:"#F4A261",fontWeight:500,marginLeft:6}}>(1ro gratis · +$6 c/u adicional)</span>}
+                {nombre==="Gorditas"   &&<span style={{fontSize:11,color:"#F4A261",fontWeight:500,marginLeft:6}}>(+$5 por relleno)</span>}
               </div>
               <div style={M.chipRow}>
                 {d.rellenos.map(r=>(
-                  <button key={r} style={{...M.chip,...(rellenos.includes(r)?M.chipOn:{})}} onClick={()=>toggleRellen(r)}>{r}</button>
+                  <button key={r} style={{...M.chip,...(rellenos.includes(r)?M.chipOn:{})}} onClick={()=>toggleRelleno(r)}>{r}</button>
                 ))}
               </div>
             </div>
           )}
           {d.sabores && (
             <div style={M.section}>
-              <div style={M.sectionTitle}>🍓 Sabor</div>
+              <div style={M.stitle}>🍓 Sabor</div>
               <div style={M.chipRow}>
                 {d.sabores.map(s=>(
                   <button key={s} style={{...M.chip,...(sabor===s?M.chipOn:{})}} onClick={()=>setSabor(s)}>{s}</button>
@@ -376,7 +272,7 @@ function ModalProducto({ producto, nombre, onConfirmar, onCerrar, sinOverlay }) 
           )}
           {d.extras && (
             <div style={M.section}>
-              <div style={M.sectionTitle}>➕ Extras <span style={{fontSize:11,color:"#888",fontWeight:400}}>(selección múltiple)</span></div>
+              <div style={M.stitle}>{"➕ Extras "}<span style={{fontSize:11,color:"#888",fontWeight:400}}>(selección múltiple)</span></div>
               <div style={M.chipRow}>
                 {d.extras.map(ex=>(
                   <button key={ex}
@@ -387,11 +283,11 @@ function ModalProducto({ producto, nombre, onConfirmar, onCerrar, sinOverlay }) 
             </div>
           )}
           <div style={M.section}>
-            <div style={M.sectionTitle}>📝 Nota especial <span style={{fontSize:11,color:"#888",fontWeight:400}}>(opcional)</span></div>
+            <div style={M.stitle}>{"📝 Nota especial "}<span style={{fontSize:11,color:"#888",fontWeight:400}}>(opcional)</span></div>
             <input style={M.notaInput} placeholder="Ej: sin cebolla, extra picoso…" value={nota} onChange={e=>setNota(e.target.value)}/>
           </div>
           <div style={M.section}>
-            <div style={M.sectionTitle}>🔢 Cantidad</div>
+            <div style={M.stitle}>🔢 Cantidad</div>
             <div style={{display:"flex",alignItems:"center",gap:14}}>
               <button style={M.qBtn} onClick={()=>setCantidad(c=>Math.max(1,c-1))}>−</button>
               <span style={{fontSize:22,fontWeight:800,minWidth:30,textAlign:"center"}}>{cantidad}</span>
@@ -401,9 +297,9 @@ function ModalProducto({ producto, nombre, onConfirmar, onCerrar, sinOverlay }) 
           </div>
         </div>
         <div style={M.footer}>
-          <div style={{fontSize:12,color:"#666",marginBottom:8,lineHeight:1.5}}>{descripcion}</div>
-          <button style={M.confirmBtn} onClick={()=>onConfirmar({nombre:descripcion,cantidad,subtotal,icon:d.icon,entregado:false,esNuevo:false})}>
-            ✅ Agregar al pedido · {fmt(subtotal)}
+          <div style={{fontSize:12,color:"#666",marginBottom:8,lineHeight:1.5}}>{desc}</div>
+          <button style={M.confirmBtn} onClick={()=>onConfirmar({nombre:desc,cantidad,subtotal,icon:d.icon,entregado:false,esNuevo:false})}>
+            {"✅ Agregar al pedido · "+fmt(subtotal)}
           </button>
         </div>
       </div>
@@ -411,25 +307,21 @@ function ModalProducto({ producto, nombre, onConfirmar, onCerrar, sinOverlay }) 
   );
 }
 
-// ══════════════════════════════════════════════════════
-// MODAL DOBLE CHECK CANCELAR
-// ══════════════════════════════════════════════════════
-function ModalConfirmarCancelar({ pedido, onConfirmar, onCerrar }) {
+// ── MODAL CANCELAR ────────────────────────────────────
+function ModalCancelar({ pedido, onConfirmar, onCerrar }) {
   return (
     <div style={{...M.overlay,zIndex:2000}} onClick={e=>{ if(e.target===e.currentTarget) onCerrar(); }}>
-      <div style={{...M.box,maxHeight:"auto",borderRadius:16,margin:20}}>
+      <div style={{background:"#1A1A1A",borderRadius:16,margin:20,width:"100%",maxWidth:380,border:"1px solid #333"}}>
         <div style={{padding:24,textAlign:"center"}}>
           <div style={{fontSize:48,marginBottom:12}}>⚠️</div>
           <div style={{fontWeight:800,fontSize:18,color:"#F0EBE3",marginBottom:8}}>¿Cancelar pedido?</div>
           <div style={{color:"#aaa",fontSize:14,marginBottom:6}}>
-            Pedido #{pedido.idDia || String(pedido.ts||"").slice(-4)} — {pedido.mesa||"Sin mesa"}
+            {"Pedido #"+(pedido.idDia||String(pedido.ts||"").slice(-4))+" — "+(pedido.mesa||"Sin mesa")}
           </div>
           <div style={{color:"#EF233C",fontSize:13,marginBottom:20}}>Esta acción no se puede deshacer.</div>
           <div style={{display:"flex",gap:10}}>
-            <button style={{flex:1,padding:"12px 0",border:"none",borderRadius:10,background:"#333",color:"#ccc",fontWeight:700,fontSize:14,cursor:"pointer"}}
-              onClick={onCerrar}>No, mantener</button>
-            <button style={{flex:1,padding:"12px 0",border:"none",borderRadius:10,background:"#EF233C",color:"#fff",fontWeight:800,fontSize:14,cursor:"pointer"}}
-              onClick={onConfirmar}>Sí, cancelar</button>
+            <button style={{flex:1,padding:"12px 0",border:"none",borderRadius:10,background:"#333",color:"#ccc",fontWeight:700,fontSize:14,cursor:"pointer"}} onClick={onCerrar}>No, mantener</button>
+            <button style={{flex:1,padding:"12px 0",border:"none",borderRadius:10,background:"#EF233C",color:"#fff",fontWeight:800,fontSize:14,cursor:"pointer"}} onClick={onConfirmar}>Sí, cancelar</button>
           </div>
         </div>
       </div>
@@ -437,169 +329,121 @@ function ModalConfirmarCancelar({ pedido, onConfirmar, onCerrar }) {
   );
 }
 
-// ══════════════════════════════════════════════════════
-// APP PRINCIPAL
-// ══════════════════════════════════════════════════════
+// ── CHIP EDITOR ───────────────────────────────────────
+function ChipEditor({ value, onChange, placeholder }) {
+  const chips = value ? value.split(",").map(s=>s.trim()).filter(Boolean) : [];
+  const [inp, setInp] = useState("");
+  const add = () => {
+    const v = inp.trim(); if(!v) return;
+    onChange([...chips,v].join(", ")); setInp("");
+  };
+  return (
+    <div>
+      <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:8}}>
+        {chips.map((c,i)=>(
+          <span key={i} style={{background:"#333",color:"#fff",borderRadius:20,padding:"4px 10px",fontSize:12,display:"flex",alignItems:"center",gap:6}}>
+            {c}
+            <button onClick={()=>onChange(chips.filter((_,j)=>j!==i).join(", "))} style={{background:"none",border:"none",color:"#aaa",cursor:"pointer",fontSize:14,lineHeight:1,padding:0}}>×</button>
+          </span>
+        ))}
+      </div>
+      <div style={{display:"flex",gap:6}}>
+        <input style={{flex:1,background:"#111",border:"1px solid #333",color:"#fff",borderRadius:8,padding:"8px 12px",fontSize:13}}
+          placeholder={placeholder} value={inp}
+          onChange={e=>setInp(e.target.value)}
+          onKeyDown={e=>{ if(e.key==="Enter"||e.key===","){e.preventDefault();add();} }}/>
+        <button onClick={add} style={{background:"#E85D04",border:"none",color:"#fff",borderRadius:8,padding:"8px 14px",fontWeight:700,cursor:"pointer",fontSize:13}}>+</button>
+      </div>
+    </div>
+  );
+}
+
+// ── VARIANTE PRECIO EDITOR ────────────────────────────
+function VariantePrecioEditor({ value, onChange }) {
+  const [nom, setNom] = useState("");
+  const [pre, setPre] = useState("");
+  const add = () => {
+    if(!nom.trim()||!pre) return;
+    onChange([...value,{nombre:nom.trim(),precio:Number(pre)}]);
+    setNom(""); setPre("");
+  };
+  return (
+    <div>
+      <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:10}}>
+        {value.map((vp,i)=>(
+          <div key={i} style={{display:"flex",alignItems:"center",gap:8,background:"#333",borderRadius:8,padding:"6px 10px"}}>
+            <span style={{flex:1,fontSize:13}}>{vp.nombre}</span>
+            <span style={{color:"#E85D04",fontWeight:700,fontSize:13}}>{fmt(vp.precio)}</span>
+            <button onClick={()=>onChange(value.filter((_,j)=>j!==i))} style={{background:"none",border:"none",color:"#aaa",cursor:"pointer",fontSize:16,padding:0}}>×</button>
+          </div>
+        ))}
+      </div>
+      <div style={{display:"flex",gap:6}}>
+        <input style={{flex:2,background:"#111",border:"1px solid #333",color:"#fff",borderRadius:8,padding:"8px 10px",fontSize:13}}
+          placeholder="Ej: Plato Grande" value={nom} onChange={e=>setNom(e.target.value)} onKeyDown={e=>e.key==="Enter"&&add()}/>
+        <input type="number" style={{flex:1,background:"#111",border:"1px solid #333",color:"#fff",borderRadius:8,padding:"8px 10px",fontSize:13}}
+          placeholder="Precio" value={pre} onChange={e=>setPre(e.target.value)} onKeyDown={e=>e.key==="Enter"&&add()}/>
+        <button onClick={add} style={{background:"#E85D04",border:"none",color:"#fff",borderRadius:8,padding:"8px 14px",fontWeight:700,cursor:"pointer",fontSize:13}}>+</button>
+      </div>
+    </div>
+  );
+}
+
+// ── APP ───────────────────────────────────────────────
 function App() {
-  const [sesion,  setSesion]  = useState(()=>{
-    try { const s = localStorage.getItem("ba_sesion"); return s ? JSON.parse(s) : null; } catch { return null; }
-  });
+  const [sesion,  setSesion]  = useState(null);
   const [view,    setView]    = useState("central");
   const [pedidos, setPedidos] = useState({});
   const [menu,    setMenu]    = useState(MENU_DEFAULT);
   const [notif,   setNotif]   = useState(null);
   const [fbReady, setFbReady] = useState(false);
 
-  useEffect(() => {
-    db.ref("pedidos").on("value", snap => setPedidos(snap.val() || {}));
-    db.ref("menu").on("value", snap => {
-      const val = snap.val();
-      if (val) setMenu(val); else db.ref("menu").set(MENU_DEFAULT);
-    });
+  useEffect(()=>{
+    db.ref("pedidos").on("value", snap=>setPedidos(snap.val()||{}));
+    db.ref("menu").on("value", snap=>{ const v=snap.val(); if(v) setMenu(v); else db.ref("menu").set(MENU_DEFAULT); });
     setFbReady(true);
-  }, []);
+  },[]);
 
-  const showNotif = msg => { setNotif(msg); setTimeout(()=>setNotif(null),2800); };
+  const showNotif = msg=>{ setNotif(msg); setTimeout(()=>setNotif(null),2800); };
 
-  // Orden fijo del ticket: comidas primero (orden específico), postres en medio, bebidas al final
-  const ORDEN_COMIDA = ["Quesadillas","Pambazos","Gorditas","Enchiladas","Tacos","Huaraches","Chilaquiles","Pan de Dulce","Pan Blanco"];
-  const ordenarItems = (items, menuActual) => {
-    const getPrioridad = item => {
-      const nombreBase = item.nombre.split(" (")[0].trim();
-      const idxComida  = ORDEN_COMIDA.indexOf(nombreBase);
-      const cat        = menuActual[nombreBase]?.categoria || "comida";
-      if (idxComida >= 0) return idxComida;
-      if (cat === "comida") return 900;
-      if (cat === "postre") return 950;
-      return 1000; // bebidas al final
-    };
-    return [...items].sort((a,b) => getPrioridad(a) - getPrioridad(b));
-  };
-
-  const addPedido = useCallback(async pedido => {
-    const idDia = await getSiguienteId();
-    // Siempre forzar mesero desde sesión para que el filtro por mesero sea confiable
-    const meseroFinal = sesion?.usuario || pedido.mesero || "sin-asignar";
+  const addPedido = useCallback(async pedido=>{
+    const id = await getSiguienteId();
     db.ref("pedidos").push({
       ...pedido,
-      mesero: meseroFinal,
-      items: ordenarItems(pedido.items || [], menu),
-      idDia,
+      items: ordenarItems(pedido.items||[], menu),
+      idDia: id,
       fecha: getTodayKey(),
-      hora: new Date().toLocaleTimeString("es-MX",{hour:"2-digit",minute:"2-digit"}),
-      estado: "pendiente",
-      ts: Date.now() + Math.random() // evitar colisión de ts entre pedidos simultáneos
+      hora:  new Date().toLocaleTimeString("es-MX",{hour:"2-digit",minute:"2-digit"}),
+      estado:"pendiente",
+      ts:    Date.now(),
     });
-    showNotif(`✅ Pedido #${idDia} enviado a cocina`);
-  }, [menu, sesion]);
+    showNotif("✅ Pedido #"+id+" enviado a cocina");
+  },[menu]);
 
-  // Al agregar items: los existentes conservan su estado, nuevos se marcan esNuevo:true
-  // Si los nuevos son SOLO bebidas → el pedido NO cambia de estado (se queda donde estaba)
-  // Si hay aunque sea UN platillo de comida → el pedido vuelve a pendientes para que cocina lo vea
-  const agregarAlPedido = useCallback((id, pedidoActual, itemsNuevos) => {
-    const estadoActual   = pedidoActual.estado;
-    const estabaEntregado = estadoActual === "entregado" || estadoActual === "cobrado";
-    const estabaEnProceso = estadoActual === "en_proceso";
-    const estabaEnPendiente = estadoActual === "pendiente";
+  const agregarAlPedido = useCallback((id, actual, nuevos)=>{
+    const yaEntregado = actual.estado==="entregado"||actual.estado==="cobrado";
+    const viejos = (actual.items||[]).map(i=>({...i,esNuevo:false,entregado:yaEntregado?true:i.entregado}));
+    const marcados = nuevos.map(i=>({...i,entregado:false,esNuevo:true}));
+    const items = [...viejos,...marcados];
+    db.ref("pedidos/"+id).update({items,total:items.reduce((s,i)=>s+(i.subtotal||0),0),estado:"pendiente",actualizado:new Date().toLocaleTimeString("es-MX",{hour:"2-digit",minute:"2-digit"})});
+    showNotif("✅ Productos añadidos — pedido vuelve a Pendientes");
+  },[]);
 
-    // Items viejos: si estaba entregado se marcan como entregado:true (ya se hicieron)
-    const itemsViejos = (pedidoActual.items||[]).map(i=>({
-      ...i, esNuevo: false,
-      entregado: estabaEntregado ? true : i.entregado
-    }));
-
-    // Detectar si hay comida o postre (requiere preparación) vs solo bebidas
-    const hayComidaOPostre = itemsNuevos.some(i => {
-      const nombreBase = (i.nombre||"").split(" (")[0].trim();
-      const datosMenu  = menu[nombreBase];
-      if (!datosMenu) return true; // sin datos → asumir que necesita preparación
-      return datosMenu.categoria === "comida" || datosMenu.categoria === "postre";
-    });
-
-    // Bebidas: esNuevo:false (no van a cocina), comida/postre: esNuevo:true
-    const itemsMarcados = itemsNuevos.map(i => {
-      const nombreBase = (i.nombre||"").split(" (")[0].trim();
-      const datosMenu  = menu[nombreBase];
-      const esBebida   = datosMenu?.categoria === "bebida";
-      return { ...i, entregado: false, esNuevo: !esBebida };
-    });
-
-    const items = [...itemsViejos, ...itemsMarcados];
-    const total = items.reduce((s,i)=>s+(i.subtotal||0),0);
-    const hora  = new Date().toLocaleTimeString("es-MX",{hour:"2-digit",minute:"2-digit"});
-
-    let nuevoEstado, update, msg;
-
-    if (estabaEnPendiente) {
-      // Ya estaba pendiente → se queda en pendiente, SIN cambiar ts (no se mueve en la cola)
-      nuevoEstado = "pendiente";
-      update = { items, total, estado: nuevoEstado, actualizado: hora };
-      msg = hayComidaOPostre
-        ? "✅ Productos añadidos — se suman al pedido en Pendientes"
-        : "✅ Bebidas añadidas al pedido en Pendientes";
-
-    } else if (estabaEnProceso) {
-      // En proceso → se queda en proceso, solo se suman los items
-      nuevoEstado = "en_proceso";
-      update = { items, total, estado: nuevoEstado, actualizado: hora };
-      msg = hayComidaOPostre
-        ? "✅ Productos añadidos — se suman al pedido En Proceso"
-        : "✅ Bebidas añadidas al pedido En Proceso";
-
-    } else {
-      // Estaba entregado/cobrado → si hay comida/postre pasa a En Proceso, si solo bebidas se queda
-      if (hayComidaOPostre) {
-        nuevoEstado = "en_proceso";
-        update = { items, total, estado: nuevoEstado, ts: Date.now(), actualizado: hora };
-        msg = "✅ Productos añadidos — pedido pasa a En Proceso";
-      } else {
-        nuevoEstado = estadoActual;
-        update = { items, total, estado: nuevoEstado, actualizado: hora };
-        msg = "✅ Bebidas añadidas — pedido se queda en Entregados";
-      }
-    }
-
-    db.ref(`pedidos/${id}`).update(update);
-    showNotif(msg);
-  }, [menu]);
-
-  const marcarItemEntregado = useCallback((id, pedidoActual, itemIdx) => {
-    const items = (pedidoActual.items||[]).map((it,i)=> i===itemIdx ? {...it,entregado:true,esNuevo:false} : it);
-    db.ref(`pedidos/${id}`).update({ items });
+  const marcarItem = useCallback((id,actual,idx)=>{
+    const items = (actual.items||[]).map((it,i)=>i===idx?{...it,entregado:true,esNuevo:false}:it);
+    db.ref("pedidos/"+id).update({items});
     showNotif("✓ Producto marcado como entregado");
-  }, []);
+  },[]);
 
-  const updateEstado = (id, estado) => db.ref(`pedidos/${id}`).update({ estado });
-  // Cancelar: se llama desde el modal de doble check
-  const cancelar = id => db.ref(`pedidos/${id}`).update({ estado:"cancelado" });
-  const editarPedido = useCallback((id, nuevosItems) => {
-    const total = nuevosItems.reduce((s,i)=>s+(i.subtotal||0),0);
-    db.ref(`pedidos/${id}`).update({ items: nuevosItems, total,
-      actualizado: new Date().toLocaleTimeString("es-MX",{hour:"2-digit",minute:"2-digit"}) });
-    showNotif("✅ Pedido actualizado");
-  }, []);
-  const updateMenu = nuevoMenu => { db.ref("menu").set(nuevoMenu); showNotif("✅ Menú actualizado"); };
+  const updateEstado = (id,estado)=>db.ref("pedidos/"+id).update({estado});
+  const cancelar     = id=>db.ref("pedidos/"+id).update({estado:"cancelado"});
+  const updateMenu   = nm=>{ db.ref("menu").set(nm); showNotif("✅ Menú actualizado"); };
 
-  const pedidosArr = Object.entries(pedidos)
-    .map(([id,p])=>({...p,id}))
-    // Orden: más reciente arriba (mayor ts = número más grande = agregado después)
-    // PERO queremos que el PRIMERO llegado quede ARRIBA → orden ASCENDENTE por ts
-    .sort((a,b)=>(a.ts||0)-(b.ts||0));
-  const hoy = pedidosArr.filter(p=>p.fecha===getTodayKey());
-  const esAdmin = sesion?.rol === "admin";
+  const pedidosArr = Object.entries(pedidos).map(([id,p])=>({...p,id})).sort((a,b)=>(a.ts||0)-(b.ts||0));
+  const hoy        = pedidosArr.filter(p=>p.fecha===getTodayKey());
+  const esAdmin    = sesion?.rol==="admin";
 
-  const handleLogin = (s) => { setSesion(s); try { localStorage.setItem("ba_sesion", JSON.stringify(s)); } catch {} };
-  const handleLogout = () => { setSesion(null); try { localStorage.removeItem("ba_sesion"); } catch {} };
-  if (!sesion) return <LoginSistema onLogin={handleLogin}/>;
-
-  const esTablero = sesion?.rol === "tablero";
-  const esMesero  = sesion?.rol === "mesero";
-  const navItems = [
-    {k:"central", l:"📺 Central"},
-    {k:"pedido",  l:"📱 Pedido",   ocultarSi: esTablero},
-    {k:"reportes",l:"📊 Reportes", soloAdmin:true},
-    {k:"admin",   l:"⚙️ Admin",    soloAdmin:true},
-  ];
+  if (!sesion) return <LoginSistema onLogin={setSesion}/>;
 
   return (
     <div style={S.root}>
@@ -608,18 +452,20 @@ function App() {
         <div style={S.brand}>
           <span style={{fontSize:22}}>🌮</span>
           <span style={S.brandText}>Bendito Antojo</span>
+          {fbReady&&<span style={S.online}>● EN VIVO</span>}
         </div>
         <div style={S.navBtns}>
-          {navItems.filter(v=>(!v.soloAdmin||esAdmin) && !v.ocultarSi).map(v=>(
-            <button key={v.k} style={{...S.navBtn,...(view===v.k?S.navBtnOn:{})}} onClick={()=>setView(v.k)}>{v.l}</button>
-          ))}
-          <button style={{...S.navBtn,color:"#EF233C",borderColor:"#EF233C"}} onClick={handleLogout}>🚪</button>
+          {[{k:"central",l:"📺 Central"},{k:"pedido",l:"📱 Pedido"},{k:"reportes",l:"📊 Reportes",a:true},{k:"admin",l:"⚙️ Admin",a:true}]
+            .filter(v=>!v.a||esAdmin)
+            .map(v=>(
+              <button key={v.k} style={{...S.navBtn,...(view===v.k?S.navBtnOn:{})}} onClick={()=>setView(v.k)}>{v.l}</button>
+            ))}
+          <button style={{...S.navBtn,color:"#EF233C",borderColor:"#EF233C"}} onClick={()=>setSesion(null)}>🚪</button>
         </div>
       </nav>
       <main style={S.main}>
-        {view==="central"  && <Central pedidos={hoy} onUpdate={updateEstado} onCancelar={cancelar} onAgregarAl={agregarAlPedido} onMarcarItem={marcarItemEntregado} onEditarPedido={editarPedido} menu={menu} sesion={sesion}/>}
-        {view==="pedido"   && !esTablero && <Pedido  onAdd={addPedido} menu={menu} sesion={sesion}/>}
-        {esTablero && view!=="central" && <div style={{padding:40,textAlign:"center",color:"#555"}}>Vista no disponible para tablero.</div>}
+        {view==="central"  && <Central  pedidos={hoy} onUpdate={updateEstado} onCancelar={cancelar} onAgregarAl={agregarAlPedido} onMarcarItem={marcarItem} menu={menu}/>}
+        {view==="pedido"   && <Pedido   onAdd={addPedido} menu={menu}/>}
         {view==="reportes" && esAdmin && <Reportes pedidos={pedidosArr}/>}
         {view==="admin"    && esAdmin && <AdminView menu={menu} onUpdate={updateMenu}/>}
       </main>
@@ -627,574 +473,182 @@ function App() {
   );
 }
 
-// ══════════════════════════════════════════════════════
-// CENTRAL — kanban con 5 columnas
-// ══════════════════════════════════════════════════════
-function Central({ pedidos, onUpdate, onCancelar, onAgregarAl, onMarcarItem, onEditarPedido, menu, sesion }) {
-  const [pedidoSelec,     setPedidoSelec]     = useState(null);
-  const [productoModal,   setProductoModal]   = useState(null);
-  const [carritoExtra,    setCarritoExtra]    = useState([]);
-  const [pedidoCancelar,  setPedidoCancelar]  = useState(null); // doble check
-  const [expandidos,      setExpandidos]      = useState({}); // {pedidoId: true/false}
-  const [modalCobro,      setModalCobro]      = useState(null); // {pedido, billete, cambio}
-  const [modalEditar,     setModalEditar]     = useState(null); // {pedido, items}
-  const [confirmEliminar, setConfirmEliminar] = useState(null); // {pedidoId, items, itemIdx}
-  const prevPendientesRef = React.useRef(null);
-  const toggleExpandir = id => setExpandidos(prev => ({...prev, [id]: !prev[id]}));
+// ── CENTRAL ───────────────────────────────────────────
+function renderItemLinea(item) {
+  const partes = item.nombre.includes("(")
+    ? item.nombre.slice(item.nombre.indexOf("(")+1, item.nombre.lastIndexOf(")")).split("|").map(s=>s.trim())
+    : [];
+  const base   = item.nombre.split(" (")[0].trim();
+  const tipo   = partes[0]||null;
+  const xq     = partes.find(p=>p.includes("Extra Queso"))||null;
+  const comp   = partes.filter(p=>p!==tipo&&!p.includes("Extra Queso")).join(", ");
+  return [base,tipo,xq,comp||null].filter(Boolean).join(" | ");
+}
 
-  // 🔔 Sonido para tablero — AudioContext se crea al primer click (requerimiento del navegador)
-  const audioCtxRef = React.useRef(null);
-  const sonidoActivoRef = React.useRef(false);
-  const [sonidoListo, setSonidoListo] = React.useState(false);
-
-  const activarSonido = React.useCallback(() => {
-    if (audioCtxRef.current) return;
-    try {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      // Reproducir silencio para "desbloquear" el contexto
-      const osc = ctx.createOscillator();
-      const g   = ctx.createGain();
-      g.gain.value = 0;
-      osc.connect(g); g.connect(ctx.destination);
-      osc.start(); osc.stop(ctx.currentTime + 0.001);
-      audioCtxRef.current = ctx;
-      sonidoActivoRef.current = true;
-      setSonidoListo(true);
-    } catch(e) {}
-  }, []);
-
-  const playNotifSound = React.useCallback(() => {
-    const ctx = audioCtxRef.current;
-    if (!ctx || !sonidoActivoRef.current) return;
-    try {
-      const beep = (freq, start, dur) => {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.connect(gain); gain.connect(ctx.destination);
-        osc.frequency.value = freq;
-        osc.type = "sine";
-        gain.gain.setValueAtTime(0, ctx.currentTime + start);
-        gain.gain.linearRampToValueAtTime(0.4, ctx.currentTime + start + 0.02);
-        gain.gain.linearRampToValueAtTime(0, ctx.currentTime + start + dur);
-        osc.start(ctx.currentTime + start);
-        osc.stop(ctx.currentTime + start + dur + 0.05);
-      };
-      beep(880,  0,    0.13);
-      beep(1100, 0.16, 0.13);
-      beep(1320, 0.32, 0.20);
-    } catch(e) {}
-  }, []);
-
-  React.useEffect(() => {
-    if (sesion?.rol !== "tablero") return;
-    const pendientesIds = new Set(pedidos.filter(p=>p.estado==="pendiente").map(p=>p.id));
-    if (prevPendientesRef.current === null) {
-      prevPendientesRef.current = pendientesIds;
-      return;
-    }
-    const hayNuevo = [...pendientesIds].some(id => !prevPendientesRef.current.has(id));
-    if (hayNuevo) playNotifSound();
-    prevPendientesRef.current = pendientesIds;
-  }, [pedidos, sesion, playNotifSound]);
+function Central({ pedidos, onUpdate, onCancelar, onAgregarAl, onMarcarItem, menu }) {
+  const [selec,      setSelec]      = useState(null);
+  const [prodModal,  setProdModal]  = useState(null);
+  const [carritoX,   setCarritoX]  = useState([]);
+  const [cancelConf, setCancelConf] = useState(null);
+  const [expandidos, setExpandidos] = useState({});
+  const toggle = id=>setExpandidos(p=>({...p,[id]:!p[id]}));
 
   const cols = [
-    { k:"pendiente",  l:"⏳ Pendientes", c:"#FFBA08", acc:[{l:"▶ Preparar",e:"en_proceso",c:"#3A86FF"}] },
-    { k:"en_proceso", l:"👨‍🍳 En Proceso", c:"#3A86FF", acc:[{l:"🤝 Entregar",e:"entregado",c:"#888"}]    },
-    { k:"entregado",  l:"🤝 Entregados",  c:"#888",    acc:[{l:"💰 Cobrado", e:"cobrado",  c:"#1D6F42"}] },
-    { k:"cobrado",    l:"💰 Cobrados",    c:"#1D6F42", acc:[] },
+    {k:"pendiente", l:"⏳ Pendientes",c:"#FFBA08",acc:[{l:"▶ Preparar",e:"en_proceso",c:"#3A86FF"}]},
+    {k:"en_proceso",l:"👨‍🍳 En Proceso",c:"#3A86FF",acc:[{l:"🤝 Entregar",e:"entregado",c:"#888"}]},
+    {k:"entregado", l:"🤝 Entregados", c:"#888",   acc:[{l:"💰 Cobrado",e:"cobrado",c:"#1D6F42"}]},
+    {k:"cobrado",   l:"💰 Cobrados",   c:"#1D6F42",acc:[]},
   ];
 
-  const confirmarExtra = item => { setCarritoExtra(prev=>[...prev,item]); setProductoModal(null); };
-  const confirmarAgregarAl = () => {
-    if (!pedidoSelec || carritoExtra.length===0) return;
-    onAgregarAl(pedidoSelec.id, pedidoSelec, carritoExtra);
-    setPedidoSelec(null); setCarritoExtra([]);
+  const confExtra = item=>{ setCarritoX(p=>[...p,item]); setProdModal(null); };
+  const confAgregar = ()=>{
+    if(!selec||carritoX.length===0) return;
+    onAgregarAl(selec.id,selec,carritoX);
+    setSelec(null); setCarritoX([]);
   };
 
   return (
     <div>
-      <div style={{...S.centralDate, display:"flex", alignItems:"center", justifyContent:"space-between"}}>
-        <span>📅 {getToday()}</span>
-        {sesion?.rol === "tablero" && (
-          <button
-            onClick={activarSonido}
-            style={{fontSize:12, padding:"5px 12px", borderRadius:20, border:"none",
-              background: sonidoListo ? "#1D6F42" : "#E85D04",
-              color:"#fff", fontWeight:700, cursor:"pointer", flexShrink:0}}>
-            {sonidoListo ? "🔔 Sonido activado" : "🔕 Activar sonido"}
-          </button>
-        )}
-      </div>
+      <div style={S.centralDate}>{"📅 "+getToday()}</div>
 
-      {/* Modal cobro con cambio */}
-      {modalCobro && (()=>{
-        const total = modalCobro.pedido.total || 0;
-        const billete = parseFloat(modalCobro.billete) || 0;
-        const cambio = billete >= total ? billete - total : null;
-        const billetesPredefinidos = [50,100,200,500,1000].filter(b=>b>=total);
-        return (
-          <div style={M.overlay} onClick={e=>{ if(e.target===e.currentTarget) setModalCobro(null); }}>
-            <div style={{...M.box,maxHeight:"85vh"}}>
-              <div style={M.header}>
-                <div style={{flex:1}}>
-                  <div style={{fontWeight:800,fontSize:17,color:"#1D6F42"}}>💰 Cobrar pedido</div>
-                  <div style={{fontSize:13,color:"#aaa"}}>
-                    #{modalCobro.pedido.idDia||String(modalCobro.pedido.ts||"").slice(-4)} — {modalCobro.pedido.mesa||"Sin mesa"}
-                  </div>
-                </div>
-                <button style={M.closeBtn} onClick={()=>setModalCobro(null)}>✕</button>
-              </div>
-              <div style={M.body}>
-                {/* Total a cobrar */}
-                <div style={{textAlign:"center",marginBottom:20,padding:"16px 0",background:"#111",borderRadius:12,border:"1px solid #1D6F42"}}>
-                  <div style={{color:"#aaa",fontSize:13,marginBottom:4}}>Total a cobrar</div>
-                  <div style={{fontSize:36,fontWeight:900,color:"#1D6F42"}}>{fmt(total)}</div>
-                </div>
+      {cancelConf && <ModalCancelar pedido={cancelConf} onConfirmar={()=>{onCancelar(cancelConf.id);setCancelConf(null);}} onCerrar={()=>setCancelConf(null)}/>}
 
-                {/* Billetes rápidos */}
-                <div style={{marginBottom:14}}>
-                  <div style={{fontSize:12,color:"#888",fontWeight:700,marginBottom:8,textTransform:"uppercase",letterSpacing:"0.4px"}}>Billetes rápidos</div>
-                  <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
-                    {billetesPredefinidos.map(b=>(
-                      <button key={b}
-                        style={{padding:"8px 16px",borderRadius:10,border:`2px solid ${parseFloat(modalCobro.billete)===b?"#E85D04":"#444"}`,
-                          background:parseFloat(modalCobro.billete)===b?"#E85D04":"#242424",
-                          color:"#fff",fontWeight:700,fontSize:14,cursor:"pointer"}}
-                        onClick={()=>setModalCobro(prev=>({...prev,billete:String(b)}))}>
-                        ${b}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Input manual */}
-                <div style={{marginBottom:16}}>
-                  <div style={{fontSize:12,color:"#888",fontWeight:700,marginBottom:6,textTransform:"uppercase",letterSpacing:"0.4px"}}>O escribe la cantidad recibida</div>
-                  <input
-                    type="number"
-                    placeholder="Ej: 150"
-                    value={modalCobro.billete}
-                    onChange={e=>setModalCobro(prev=>({...prev,billete:e.target.value}))}
-                    style={{width:"100%",background:"#111",border:"1px solid #444",color:"#fff",borderRadius:8,padding:"12px 14px",fontSize:18,fontWeight:700}}
-                  />
-                </div>
-
-                {/* Cambio */}
-                {modalCobro.billete !== "" && (
-                  <div style={{textAlign:"center",padding:"14px 0",borderRadius:12,
-                    background: cambio !== null ? "rgba(6,214,160,0.1)" : "rgba(239,35,60,0.1)",
-                    border: `1px solid ${cambio !== null ? "#06D6A0" : "#EF233C"}`,marginBottom:4}}>
-                    {cambio !== null ? (
-                      <>
-                        <div style={{color:"#aaa",fontSize:12,marginBottom:4}}>Cambio a devolver</div>
-                        <div style={{fontSize:40,fontWeight:900,color:"#06D6A0"}}>{fmt(cambio)}</div>
-                      </>
-                    ) : (
-                      <>
-                        <div style={{color:"#EF233C",fontSize:14,fontWeight:700}}>⚠️ El billete no alcanza</div>
-                        <div style={{color:"#aaa",fontSize:12,marginTop:4}}>Faltan {fmt(total - billete)}</div>
-                      </>
-                    )}
-                  </div>
-                )}
-              </div>
-              <div style={M.footer}>
-                <div style={{display:"flex",gap:10}}>
-                  <button
-                    style={{flex:1,padding:"13px 0",borderRadius:12,border:"2px solid #444",background:"#2a2a2a",color:"#ccc",fontWeight:700,fontSize:14,cursor:"pointer"}}
-                    onClick={()=>setModalCobro(null)}>
-                    ✕ Cancelar
-                  </button>
-                  <button
-                    style={{flex:2,padding:"13px 0",borderRadius:12,border:"none",
-                      background: cambio !== null || modalCobro.billete==="" ? "#1D6F42" : "#555",
-                      color:"#fff",fontWeight:800,fontSize:15,cursor:"pointer",
-                      opacity: (cambio===null && modalCobro.billete!=="") ? 0.5 : 1}}
-                    disabled={cambio===null && modalCobro.billete!==""}
-                    onClick={()=>{ onUpdate(modalCobro.pedido.id,"cobrado"); setModalCobro(null); }}>
-                    ✅ Confirmar cobro
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
-
-      {/* Modal Editar Pedido */}
-      {modalEditar && (
-        <div style={{...M.overlay,zIndex:2000}} onClick={e=>{ if(e.target===e.currentTarget) setModalEditar(null); }}>
-          <div style={{...M.box,maxHeight:"88vh"}}>
-            <div style={M.header}>
-              <div style={{flex:1}}>
-                <div style={{fontWeight:800,fontSize:17,color:"#3A86FF"}}>✏️ Editar pedido</div>
-                <div style={{fontSize:13,color:"#aaa"}}>#{modalEditar.pedido.idDia||String(modalEditar.pedido.ts||"").slice(-4)} — {modalEditar.pedido.mesa||"Sin mesa"}</div>
-              </div>
-              <button style={M.closeBtn} onClick={()=>setModalEditar(null)}>✕</button>
-            </div>
-            <div style={M.body}>
-              {modalEditar.items.map((item, idx)=>{
-                const partes = item.nombre.includes("(")
-                  ? item.nombre.slice(item.nombre.indexOf("(")+1, item.nombre.lastIndexOf(")")).split("|").map(s=>s.trim())
-                  : [];
-                const nombreBase = item.nombre.split(" (")[0].trim();
-                const lineaPrincipal = [nombreBase, ...(partes.length?[partes.join(" | ")]:[])]
-                  .filter(Boolean).join(" ");
-                return (
-                  <div key={idx} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderBottom:"1px solid #222"}}>
-                    <span style={{fontSize:22,flexShrink:0}}>{item.icon}</span>
-                    <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontSize:14,fontWeight:600,color:"#F0EBE3",lineHeight:1.3}}>{lineaPrincipal}</div>
-                      <div style={{fontSize:12,color:"#aaa"}}>Subtotal: {fmt(item.subtotal)}</div>
-                    </div>
-                    {/* Cantidad */}
-                    <div style={{display:"flex",alignItems:"center",gap:6}}>
-                      <button style={{...M.qBtn,width:28,height:28,fontSize:16}}
-                        onClick={()=>{
-                          if (item.cantidad <= 1) return;
-                          setModalEditar(prev=>({...prev, items: prev.items.map((it,i)=> i===idx
-                            ? {...it, cantidad: it.cantidad-1, subtotal: Math.round(it.subtotal/it.cantidad*(it.cantidad-1)) }
-                            : it
-                          )}));
-                        }}>−</button>
-                      <span style={{fontWeight:800,fontSize:15,color:"#E85D04",minWidth:20,textAlign:"center"}}>{item.cantidad}</span>
-                      <button style={{...M.qBtn,width:28,height:28,fontSize:16}}
-                        onClick={()=>{
-                          setModalEditar(prev=>({...prev, items: prev.items.map((it,i)=> i===idx
-                            ? {...it, cantidad: it.cantidad+1, subtotal: Math.round(it.subtotal/it.cantidad*(it.cantidad+1)) }
-                            : it
-                          )}));
-                        }}>+</button>
-                    </div>
-                    {/* 🔧 Editar ingredientes del producto */}
-                    <button style={{background:"#E85D04",border:"none",color:"#fff",borderRadius:6,padding:"5px 8px",fontSize:12,fontWeight:700,cursor:"pointer"}}
-                      onClick={()=>{
-                        const nombreBase = item.nombre.split(" (")[0].trim();
-                        const datosMenu = menu[nombreBase];
-                        if (datosMenu) {
-                          setModalEditar(prev=>({...prev, editandoIdx: idx}));
-                        }
-                      }}>🔧</button>
-                    {/* Eliminar — 1 sola confirmación */}
-                    <button style={{background:"#EF233C",border:"none",color:"#fff",borderRadius:6,padding:"5px 8px",fontSize:12,fontWeight:700,cursor:"pointer"}}
-                      onClick={()=>setConfirmEliminar({ pedidoId:modalEditar.pedido.id, items:modalEditar.items, itemIdx:idx })}>🗑️</button>
-                  </div>
-                );
-              })}
-              {modalEditar.items.length === 0 && (
-                <div style={{color:"#555",textAlign:"center",padding:20,fontSize:14}}>No hay productos en este pedido.</div>
-              )}
-            </div>
-            <div style={M.footer}>
-              <div style={{textAlign:"right",fontWeight:800,fontSize:16,color:"#E85D04",marginBottom:10}}>
-                Total: {fmt(modalEditar.items.reduce((s,i)=>s+(i.subtotal||0),0))}
-              </div>
-              <div style={{display:"flex",gap:10}}>
-                <button style={{flex:1,padding:"12px 0",border:"2px solid #444",borderRadius:12,background:"#2a2a2a",color:"#ccc",fontWeight:700,cursor:"pointer"}}
-                  onClick={()=>setModalEditar(null)}>Cancelar</button>
-                <button style={{flex:2,padding:"12px 0",border:"none",borderRadius:12,background:"#3A86FF",color:"#fff",fontWeight:800,fontSize:15,cursor:"pointer"}}
-                  onClick={()=>{ onEditarPedido(modalEditar.pedido.id, modalEditar.items); setModalEditar(null); }}>
-                  💾 Guardar cambios
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Sub-modal: editar ingredientes — con zIndex superior al modalEditar */}
-      {modalEditar?.editandoIdx !== undefined && modalEditar?.editandoIdx !== null && (() => {
-        const idx = modalEditar.editandoIdx;
-        const item = modalEditar.items[idx];
-        if (!item) return null;
-        const nombreBase = item.nombre.split(" (")[0].trim();
-        const datosMenu = menu[nombreBase];
-        if (!datosMenu) return null;
-        return (
-          <div style={{...M.overlay, zIndex:4000, alignItems:"flex-end", justifyContent:"center"}}
-            onClick={e=>{ if(e.target===e.currentTarget) setModalEditar(prev=>({...prev, editandoIdx:null})); }}>
-            <ModalProducto
-              sinOverlay={true}
-              nombre={nombreBase}
-              producto={datosMenu}
-              onCerrar={()=>setModalEditar(prev=>({...prev, editandoIdx:null}))}
-              onConfirmar={(itemEditado)=>{
-                setModalEditar(prev=>({
-                  ...prev,
-                  editandoIdx: null,
-                  items: prev.items.map((it,i)=> i===idx
-                    ? {...itemEditado, entregado:it.entregado, esNuevo:it.esNuevo}
-                    : it)
-                }));
-              }}
-            />
-          </div>
-        );
-      })()}
-
-      {/* Confirmación eliminar item — 1 sola vez */}
-      {confirmEliminar && (
-        <div style={{...M.overlay,zIndex:3000}}>
-          <div style={{...M.box,maxHeight:"auto",borderRadius:16,margin:20}}>
-            <div style={{padding:24,textAlign:"center"}}>
-              <div style={{fontSize:44,marginBottom:10}}>🗑️</div>
-              <div style={{fontWeight:800,fontSize:17,color:"#F0EBE3",marginBottom:8}}>¿Eliminar este producto?</div>
-              <div style={{color:"#aaa",fontSize:13,marginBottom:6}}>
-                {confirmEliminar.items[confirmEliminar.itemIdx]?.nombre?.split(" (")[0]}
-              </div>
-              <div style={{color:"#EF233C",fontSize:12,marginBottom:20}}>Esta acción no se puede deshacer.</div>
-              <div style={{display:"flex",gap:10}}>
-                <button style={{flex:1,padding:"12px 0",border:"none",borderRadius:10,background:"#333",color:"#ccc",fontWeight:700,cursor:"pointer"}}
-                  onClick={()=>setConfirmEliminar(null)}>No, conservar</button>
-                <button style={{flex:1,padding:"12px 0",border:"none",borderRadius:10,background:"#EF233C",color:"#fff",fontWeight:800,cursor:"pointer"}}
-                  onClick={()=>{
-                    const nuevosItems = confirmEliminar.items.filter((_,i)=>i!==confirmEliminar.itemIdx);
-                    setModalEditar(prev=>({...prev, items: nuevosItems}));
-                    setConfirmEliminar(null);
-                  }}>🗑️ Sí, eliminar</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Doble check para cancelar */}
-      {pedidoCancelar && (
-        <ModalConfirmarCancelar
-          pedido={pedidoCancelar}
-          onConfirmar={()=>{ onCancelar(pedidoCancelar.id); setPedidoCancelar(null); }}
-          onCerrar={()=>setPedidoCancelar(null)}
-        />
-      )}
-
-      {/* Modal seleccionar producto para agregar */}
-      {pedidoSelec && !productoModal && (
-        <div style={M.overlay} onClick={e=>{ if(e.target===e.currentTarget){ setPedidoSelec(null); setCarritoExtra([]); }}}>
+      {selec && !prodModal && (
+        <div style={M.overlay} onClick={e=>{ if(e.target===e.currentTarget){setSelec(null);setCarritoX([]);} }}>
           <div style={M.box}>
             <div style={M.header}>
               <div style={{flex:1}}>
                 <div style={{fontWeight:800,fontSize:16,color:"#E85D04"}}>➕ Agregar productos</div>
-                <div style={{fontSize:13,color:"#aaa"}}>
-                  Pedido #{pedidoSelec.idDia||String(pedidoSelec.ts).slice(-4)} — {pedidoSelec.mesa||"Sin mesa"}
-                </div>
+                <div style={{fontSize:13,color:"#aaa"}}>{"Pedido #"+(selec.idDia||String(selec.ts||"").slice(-4))+" — "+(selec.mesa||"Sin mesa")}</div>
               </div>
-              <button style={M.closeBtn} onClick={()=>{ setPedidoSelec(null); setCarritoExtra([]); }}>✕</button>
+              <button style={M.closeBtn} onClick={()=>{setSelec(null);setCarritoX([]);}}>✕</button>
             </div>
             <div style={{...M.body,maxHeight:"52vh",overflowY:"auto"}}>
               <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(110px,1fr))",gap:8}}>
-                {Object.entries(menu).map(([nombre,datos])=>(
-                  <button key={nombre}
-                    style={{background:"#242424",border:`2px solid ${datos.color}`,borderRadius:10,padding:"10px 6px",color:"#fff",cursor:"pointer",textAlign:"center"}}
-                    onClick={()=>setProductoModal({nombre,datos})}>
-                    <div style={{fontSize:22}}>{datos.icon}</div>
-                    <div style={{fontSize:12,fontWeight:700,marginTop:3}}>{nombre}</div>
-                    <div style={{fontSize:11,color:"#aaa"}}>{fmt(getPrecio(datos,datos.variantes?.[0]))}</div>
+                {Object.entries(menu).map(([n,d])=>(
+                  <button key={n} style={{background:"#242424",border:"2px solid "+d.color,borderRadius:10,padding:"10px 6px",color:"#fff",cursor:"pointer",textAlign:"center"}}
+                    onClick={()=>setProdModal({nombre:n,datos:d})}>
+                    <div style={{fontSize:22}}>{d.icon}</div>
+                    <div style={{fontSize:12,fontWeight:700,marginTop:3}}>{n}</div>
+                    <div style={{fontSize:11,color:"#aaa"}}>{fmt(getPrecio(d,d.variantes?.[0]))}</div>
                   </button>
                 ))}
               </div>
-              {carritoExtra.length > 0 && (
+              {carritoX.length>0 && (
                 <div style={{marginTop:12,background:"#111",padding:10,borderRadius:8}}>
                   <div style={{fontWeight:700,marginBottom:6,color:"#E85D04"}}>Por agregar:</div>
-                  {carritoExtra.map((i,idx)=>(
-                    <div key={idx} style={{display:"flex",justifyContent:"space-between",fontSize:13,padding:"2px 0",color:"#ccc"}}>
-                      <span>{i.icon} {i.nombre}</span><span>{fmt(i.subtotal)}</span>
+                  {carritoX.map((it,i)=>(
+                    <div key={i} style={{display:"flex",justifyContent:"space-between",fontSize:13,padding:"2px 0",color:"#ccc"}}>
+                      <span>{it.icon+" "+it.nombre}</span><span>{fmt(it.subtotal)}</span>
                     </div>
                   ))}
                   <div style={{borderTop:"1px solid #333",marginTop:6,paddingTop:6,fontWeight:800,color:"#E85D04",textAlign:"right"}}>
-                    Extra: {fmt(carritoExtra.reduce((s,i)=>s+i.subtotal,0))}
+                    {"Extra: "+fmt(carritoX.reduce((s,i)=>s+i.subtotal,0))}
                   </div>
                 </div>
               )}
             </div>
             <div style={M.footer}>
-              <button style={{...M.confirmBtn,opacity:carritoExtra.length===0?0.4:1}}
-                disabled={carritoExtra.length===0} onClick={confirmarAgregarAl}>
+              <button style={{...M.confirmBtn,opacity:carritoX.length===0?0.4:1}} disabled={carritoX.length===0} onClick={confAgregar}>
                 ✅ Confirmar y enviar a cocina
               </button>
             </div>
           </div>
         </div>
       )}
-
-      {productoModal && (
-        <ModalProducto nombre={productoModal.nombre} producto={productoModal.datos}
-          onConfirmar={confirmarExtra} onCerrar={()=>setProductoModal(null)}/>
-      )}
+      {prodModal && <ModalProducto nombre={prodModal.nombre} producto={prodModal.datos} onConfirmar={confExtra} onCerrar={()=>setProdModal(null)}/>}
 
       <div style={S.kanban}>
         {cols.map(col=>(
           <div key={col.k} style={S.kCol}>
-            <div style={{...S.kHead,borderBottom:`3px solid ${col.c}`,color:col.c}}>{col.l}</div>
-            {pedidos.filter(p=>p.estado===col.k && (sesion?.rol!=="mesero" || p.mesero===sesion?.usuario)).map(p=>{
-              const esCobrado = col.k==="cobrado";
-              const itemsOriginales = (p.items||[]).filter(i=>!i.esNuevo);
-              const itemsNuevos     = (p.items||[]).filter(i=>i.esNuevo);
-              const hayNuevos       = itemsNuevos.length > 0;
+            <div style={{...S.kHead,borderBottom:"3px solid "+col.c,color:col.c}}>{col.l}</div>
+            {pedidos.filter(p=>p.estado===col.k).map(p=>{
+              const esCobrado   = col.k==="cobrado"||col.k==="entregado";
+              const todosItems  = p.items||[];
+              const originales  = todosItems.filter(i=>!i.esNuevo);
+              const nuevos      = todosItems.filter(i=>i.esNuevo);
+              const hayNuevos   = nuevos.length>0;
+              const expandido   = expandidos[p.id];
 
               return (
                 <div key={p.id} style={{...S.card,...(p.actualizado&&!esCobrado?{border:"2px solid #E85D04"}:{})}}>
                   <div style={S.cardTop}>
-                    <span style={{fontWeight:800,fontSize:16}}>#{p.idDia || String(p.ts||"").slice(-4)}</span>
-                    <span style={{fontSize:15}}> — {p.mesa||"Sin mesa"}</span><br/>
-                    <span style={{color:"#aaa",fontSize:14}}>{p.hora}{p.actualizado?` · act. ${p.actualizado}`:""} · {fmt(p.total)}</span><br/>
-                    {p.mesero && <span style={{color:"#9D4EDD",fontSize:14}}>👤 {p.mesero}{p.tipoServicio ? ` · ${p.tipoServicio==="llevar"?"🥡 Para llevar":"🍽️ En sitio"}` : ""}</span>}
+                    <span style={{fontWeight:800,fontSize:16}}>{"#"+(p.idDia||String(p.ts||"").slice(-4))}</span>
+                    <span style={{fontSize:15}}>{" — "+(p.mesa||"Sin mesa")}</span><br/>
+                    <span style={{color:"#aaa",fontSize:14}}>{(p.hora||"")+(p.actualizado?" · act. "+p.actualizado:"")+" · "+fmt(p.total)}</span><br/>
+                    {p.mesero && <span style={{color:"#FFBA08",fontSize:14}}>{"👤 "+p.mesero+(p.tipoServicio?" · "+(p.tipoServicio==="llevar"?"🥡 Para llevar":"🍽️ En sitio"):"")}</span>}
                   </div>
 
                   <div style={S.itemsList}>
-                    {(()=>{
-                      // En entregado/cobrado: vista limpia sin tachados ni botones
-                      const esVistaLimpia = col.k==="entregado" || col.k==="cobrado";
-                      const todosItems = (p.items||[]);
-
-                      const renderItem = (item, i, esNuevoItem) => {
-                        const partes = item.nombre.includes("(")
-                          ? item.nombre.slice(item.nombre.indexOf("(")+1, item.nombre.lastIndexOf(")")).split("|").map(s=>s.trim())
-                          : [];
-                        const nombreBase = item.nombre.split(" (")[0].trim();
-                        // partes: [variante, rellenos, sabor, extras("Extra Queso, Cebolla..."), nota]
-                        // Necesitamos separar Extra Queso del resto de complementos
-                        const todasPartes = partes.flatMap(p =>
-                          p.includes("Extra Queso") ? p.split(",").map(s=>s.trim()) : [p]
-                        );
-                        const tipo        = todasPartes[0] || null;
-                        const extraQueso  = todasPartes.find(p=>p.includes("Extra Queso")) || null;
-                        // complementos = todo menos tipo y Extra Queso (rellenos, sabor, otros extras, nota)
-                        const complementos = todasPartes
-                          .filter(p => p && p!==tipo && !p.includes("Extra Queso"))
-                          .join(", ");
-                        // Orden final: Nombre | Tipo | Extra Queso | complementos
-                        const lineaPrincipal = [nombreBase, tipo, extraQueso, complementos||null].filter(Boolean).join(" | ");
-
-                        if (esVistaLimpia) {
-                          // Vista limpia: sin tachado, sin botones, todo visible
-                          return (
-                            <div key={i} style={{padding:"5px 0",borderBottom:"1px solid #222"}}>
-                              <div style={{display:"flex",alignItems:"center",gap:8}}>
-                                <span style={{fontSize:22,flexShrink:0}}>{item.icon}</span>
-                                <span style={{fontWeight:900,fontSize:16,color:"#E85D04",flexShrink:0}}>×{item.cantidad}</span>
-                                <span style={{fontWeight:600,fontSize:15,color:"#F0EBE3",flex:1,lineHeight:1.4}}>{lineaPrincipal}</span>
-                              </div>
-                            </div>
-                          );
-                        }
-
-                        // Vista normal (pendiente / en_proceso): tachado + botones
-                        if (esNuevoItem) {
-                          return (
-                            <div key={i} style={{padding:"5px 6px",borderBottom:"1px solid #2a2a2a",borderRadius:4,
-                              background:"rgba(255,186,8,0.06)",animation:"pulseNew 2s ease-in-out infinite",
-                              opacity:item.entregado?0.4:1,textDecoration:item.entregado?"line-through":"none"}}>
-                              <div style={{display:"flex",alignItems:"center",gap:8}}>
-                                <span style={{fontSize:22,flexShrink:0}}>{item.icon}</span>
-                                <span style={{fontWeight:900,fontSize:16,color:"#FFBA08",flexShrink:0}}>×{item.cantidad}</span>
-                                <span style={{fontWeight:600,fontSize:15,color:item.entregado?"#555":"#F0EBE3",flex:1,lineHeight:1.4}}>{lineaPrincipal}</span>
-                              </div>
-                            </div>
-                          );
-                        }
-                        return (
-                          <div key={i} style={{padding:"5px 0",borderBottom:"1px solid #222",
-                            opacity:item.entregado?0.4:1,textDecoration:item.entregado?"line-through":"none"}}>
+                    {esCobrado ? (
+                      <>
+                        <button style={S.expandBtn} onClick={()=>toggle(p.id)}>
+                          {expandido?"▲ Ocultar pedido":"▼ Ver pedido completo ("+todosItems.length+" producto"+(todosItems.length!==1?"s":"")+")"  }
+                        </button>
+                        {expandido && todosItems.map((item,i)=>(
+                          <div key={i} style={{padding:"5px 0",borderBottom:"1px solid #222"}}>
                             <div style={{display:"flex",alignItems:"center",gap:8}}>
                               <span style={{fontSize:22,flexShrink:0}}>{item.icon}</span>
-                              <span style={{fontWeight:900,fontSize:16,color:item.entregado?"#555":"#E85D04",flexShrink:0}}>×{item.cantidad}</span>
-                              <span style={{fontWeight:600,fontSize:15,color:item.entregado?"#555":"#F0EBE3",flex:1,lineHeight:1.4}}>{lineaPrincipal}</span>
-                              {col.k==="entregado" && !item.entregado && (
-                                <button style={S.checkBtn} onClick={()=>onMarcarItem(p.id,p,todosItems.indexOf(item))}>✓</button>
-                              )}
+                              <span style={{fontWeight:900,fontSize:16,color:"#E85D04",flexShrink:0}}>{"×"+item.cantidad}</span>
+                              <span style={{fontWeight:600,fontSize:15,color:"#F0EBE3",flex:1,lineHeight:1.4}}>{renderItemLinea(item)}</span>
                             </div>
                           </div>
-                        );
-                      };
-
-                      if (esVistaLimpia) {
-                        // En entregado/cobrado: colapsado por defecto, expandir con botón
-                        const expandido = expandidos[p.id];
-                        return (
-                          <>
-                            <button
-                              style={{width:"100%",padding:"5px 0",background:"transparent",
-                                border:"1px dashed #444",borderRadius:6,color:"#aaa",fontSize:12,
-                                cursor:"pointer",fontWeight:600,marginBottom:expandido?6:0}}
-                              onClick={()=>toggleExpandir(p.id)}>
-                              {expandido
-                                ? "▲ Ocultar pedido"
-                                : `▼ Ver pedido completo (${todosItems.length} producto${todosItems.length!==1?"s":""})`}
-                            </button>
-                            {expandido && todosItems.map((item,i) => renderItem(item, i, false))}
-                          </>
-                        );
-                      }
-
-                      // Vista normal con nuevos: mostrar TODOS los no entregados (para cocina)
-                      if (hayNuevos) {
-                        const expandido = expandidos[p.id];
-                        const itemsPendientesPreparar = todosItems.filter(it => !it.entregado);
-                        return (
-                          <>
-                            {/* Todos los pendientes de preparar */}
-                            <div style={{fontSize:10,color:"#FFBA08",fontWeight:800,padding:"2px 0",letterSpacing:"0.4px"}}>
-                              🍳 PENDIENTES DE PREPARAR ({itemsPendientesPreparar.length})
+                        ))}
+                      </>
+                    ) : hayNuevos ? (
+                      <>
+                        <div style={{fontSize:10,color:"#FFBA08",fontWeight:800,padding:"2px 0",letterSpacing:"0.4px"}}>🆕 NUEVOS — PENDIENTES</div>
+                        {nuevos.map((item,i)=>(
+                          <div key={i} style={{padding:"5px 6px",borderBottom:"1px solid #2a2a2a",borderRadius:4,background:"rgba(255,186,8,0.06)",animation:"pulseNew 2s infinite"}}>
+                            <div style={{display:"flex",alignItems:"center",gap:8}}>
+                              <span style={{fontSize:22,flexShrink:0}}>{item.icon}</span>
+                              <span style={{fontWeight:900,fontSize:16,color:"#FFBA08",flexShrink:0}}>{"×"+item.cantidad}</span>
+                              <span style={{fontWeight:600,fontSize:15,color:"#F0EBE3",flex:1,lineHeight:1.4}}>{renderItemLinea(item)}</span>
                             </div>
-                            {itemsPendientesPreparar.map((item,i) => renderItem(item, i, item.esNuevo))}
-
-                            {/* Botón para ver ya preparados */}
-                            {itemsOriginales.filter(it=>it.entregado).length > 0 && (
-                              <button
-                                style={{width:"100%",marginTop:6,padding:"4px 0",background:"transparent",
-                                  border:"1px dashed #444",borderRadius:6,color:"#888",fontSize:11,
-                                  cursor:"pointer",fontWeight:600}}
-                                onClick={()=>toggleExpandir(p.id)}>
-                                {expandido ? "▲ Ocultar ya preparados" : `▼ Ver ya preparados (${itemsOriginales.filter(it=>it.entregado).length})`}
-                              </button>
-                            )}
-                            {expandido && (
-                              <>
-                                <div style={{fontSize:10,color:"#555",fontWeight:700,padding:"4px 0 2px",letterSpacing:"0.4px"}}>
-                                  YA PREPARADOS
+                          </div>
+                        ))}
+                        <button style={S.expandBtn} onClick={()=>toggle(p.id)}>
+                          {expandido?"▲ Ocultar anteriores":"▼ Ver todos ("+(originales.length)+" anteriores)"}
+                        </button>
+                        {expandido && (
+                          <>
+                            <div style={{fontSize:10,color:"#555",fontWeight:700,padding:"4px 0 2px"}}>ANTERIORES</div>
+                            {originales.map((item,i)=>(
+                              <div key={i} style={{padding:"5px 0",borderBottom:"1px solid #222",opacity:item.entregado?0.4:1,textDecoration:item.entregado?"line-through":"none"}}>
+                                <div style={{display:"flex",alignItems:"center",gap:8}}>
+                                  <span style={{fontSize:22,flexShrink:0}}>{item.icon}</span>
+                                  <span style={{fontWeight:900,fontSize:16,color:item.entregado?"#555":"#E85D04",flexShrink:0}}>{"×"+item.cantidad}</span>
+                                  <span style={{fontWeight:600,fontSize:15,color:item.entregado?"#555":"#F0EBE3",flex:1,lineHeight:1.4}}>{renderItemLinea(item)}</span>
                                 </div>
-                                {itemsOriginales.filter(it=>it.entregado).map((item,i) => renderItem(item, i, false))}
-                              </>
-                            )}
+                              </div>
+                            ))}
                           </>
-                        );
-                      }
-
-                      // Sin items nuevos: mostrar todo normal
-                      return itemsOriginales.map((item,i) => renderItem(item, i, false));
-                    })()}
+                        )}
+                      </>
+                    ) : (
+                      todosItems.map((item,i)=>(
+                        <div key={i} style={{padding:"5px 0",borderBottom:"1px solid #222",opacity:item.entregado?0.4:1,textDecoration:item.entregado?"line-through":"none"}}>
+                          <div style={{display:"flex",alignItems:"center",gap:8}}>
+                            <span style={{fontSize:22,flexShrink:0}}>{item.icon}</span>
+                            <span style={{fontWeight:900,fontSize:16,color:item.entregado?"#555":"#E85D04",flexShrink:0}}>{"×"+item.cantidad}</span>
+                            <span style={{fontWeight:600,fontSize:15,color:item.entregado?"#555":"#F0EBE3",flex:1,lineHeight:1.4}}>{renderItemLinea(item)}</span>
+                            {col.k==="entregado"&&!item.entregado&&<button style={S.checkBtn} onClick={()=>onMarcarItem(p.id,p,i)}>✓</button>}
+                          </div>
+                        </div>
+                      ))
+                    )}
                   </div>
 
-                  {/* Botones de acción — cobrados no tienen ninguno */}
-                  {!esCobrado && (
+                  {col.k!=="cobrado" && (
                     <div style={S.cardAcc}>
                       {col.acc.map(a=>(
-                        <button key={a.e} style={{...S.accBtn,background:a.c}}
-                          onClick={()=>{
-                            if (a.e==="cobrado") {
-                              setModalCobro({ pedido: p, billete: "", cambio: null });
-                            } else {
-                              onUpdate(p.id, a.e);
-                            }
-                          }}>{a.l}</button>
+                        <button key={a.e} style={{...S.accBtn,background:a.c}} onClick={()=>onUpdate(p.id,a.e)}>{a.l}</button>
                       ))}
-                      {/* ➕ y ✏️ solo disponibles en pendiente y entregado, NO en proceso */}
-                      {col.k !== "en_proceso" && (
-                        <>
-                          <button style={{...S.accBtn,background:"#9D4EDD"}}
-                            onClick={()=>{ setPedidoSelec(p); setCarritoExtra([]); }}>➕</button>
-                          <button style={{...S.accBtn,background:"#3A86FF"}}
-                            onClick={()=>setModalEditar({ pedido:p, items: JSON.parse(JSON.stringify(p.items||[])) })}>✏️</button>
-                        </>
-                      )}
-                      {col.k==="pendiente" && (
-                        <button style={{...S.accBtn,background:"#EF233C"}} onClick={()=>setPedidoCancelar(p)}>✕</button>
-                      )}
+                      <button style={{...S.accBtn,background:"#9D4EDD"}} onClick={()=>{setSelec(p);setCarritoX([]);}}>➕</button>
+                      {col.k==="pendiente"&&<button style={{...S.accBtn,background:"#EF233C"}} onClick={()=>setCancelConf(p)}>✕</button>}
                     </div>
                   )}
-                  {esCobrado && (
-                    <div style={{fontSize:11,color:"#1D6F42",textAlign:"center",marginTop:6,fontWeight:700}}>✅ Pedido cerrado</div>
-                  )}
+                  {col.k==="cobrado" && <div style={{fontSize:11,color:"#1D6F42",textAlign:"center",marginTop:6,fontWeight:700}}>✅ Pedido cerrado</div>}
                 </div>
               );
             })}
@@ -1205,135 +659,102 @@ function Central({ pedidos, onUpdate, onCancelar, onAgregarAl, onMarcarItem, onE
   );
 }
 
-// ══════════════════════════════════════════════════════
-// PEDIDO
-// ══════════════════════════════════════════════════════
-function Pedido({ onAdd, menu, sesion }) {
-  const [carrito,       setCarrito]       = useState([]);
-  const [mesa,          setMesa]          = useState("");
-  const [mesero,        setMesero]        = useState(sesion?.usuario || "");
-  const [tipoServicio,  setTipoServicio]  = useState(""); // "sitio" | "llevar"
-  const [productoModal, setProductoModal] = useState(null);
-  const [filtro,        setFiltro]        = useState("comida");
-  const [errores,       setErrores]       = useState({});
+// ── PEDIDO ────────────────────────────────────────────
+function Pedido({ onAdd, menu }) {
+  const [carrito,    setCarrito]    = useState([]);
+  const [mesa,       setMesa]       = useState("");
+  const [mesero,     setMesero]     = useState("");
+  const [tipo,       setTipo]       = useState("");
+  const [prodModal,  setProdModal]  = useState(null);
+  const [filtro,     setFiltro]     = useState("comida");
+  const [errores,    setErrores]    = useState({});
   const total = carrito.reduce((s,i)=>s+(i.subtotal||0),0);
 
-  const confirmar = item => {
-    if (productoModal?.editIdx !== undefined) {
-      setCarrito(prev => prev.map((it,i) => i===productoModal.editIdx ? item : it));
-    } else {
-      setCarrito(prev => [...prev, item]);
-    }
-    setProductoModal(null);
+  const confirmar = item=>{
+    if(prodModal?.editIdx!==undefined) setCarrito(p=>p.map((it,i)=>i===prodModal.editIdx?item:it));
+    else setCarrito(p=>[...p,item]);
+    setProdModal(null);
   };
-
-  const editarItem = (idx) => {
+  const editarItem = idx=>{
     const item = carrito[idx];
-    const nombreBase = item.nombre.split(" (")[0].trim();
-    const datosProducto = menu[nombreBase];
-    if (!datosProducto) return;
-    setProductoModal({ nombre: nombreBase, datos: datosProducto, editIdx: idx });
+    const base = item.nombre.split(" (")[0].trim();
+    const d    = menu[base];
+    if(!d) return;
+    setProdModal({nombre:base,datos:d,editIdx:idx});
   };
-
-  const enviar = () => {
-    const errs = {};
-    if (!mesa.trim())        errs.mesa       = "Escribe la mesa o nombre del cliente";
-    if (!mesero.trim())      errs.mesero     = "Escribe el nombre del mesero";
-    if (!tipoServicio)       errs.servicio   = "Selecciona si es para llevar o en sitio";
-    if (Object.keys(errs).length) { setErrores(errs); setTimeout(()=>setErrores({}),3000); return; }
-    onAdd({ items:carrito, mesa, mesero, tipoServicio, total });
-    setCarrito([]); setMesa(""); setMesero(""); setTipoServicio("");
+  const enviar = ()=>{
+    const e={};
+    if(!mesa.trim())   e.mesa="Escribe la mesa o nombre";
+    if(!mesero.trim()) e.mesero="Escribe el nombre del mesero";
+    if(!tipo)          e.tipo="Selecciona el tipo de servicio";
+    if(Object.keys(e).length){ setErrores(e); setTimeout(()=>setErrores({}),3000); return; }
+    onAdd({items:carrito,mesa,mesero,tipoServicio:tipo,total});
+    setCarrito([]); setMesa(""); setMesero(""); setTipo("");
   };
-
-  const inputStyle = campo => ({
-    ...S.mesaInput,
-    marginBottom: errores[campo] ? 4 : 14,
-    ...(errores[campo] ? {border:"2px solid #EF233C"} : {})
-  });
 
   return (
     <div style={{paddingBottom:130}}>
-      {productoModal && (
-        <ModalProducto
-          nombre={productoModal.nombre}
-          producto={productoModal.datos}
-          onConfirmar={confirmar}
-          onCerrar={()=>setProductoModal(null)}
-        />
-      )}
+      {prodModal && <ModalProducto nombre={prodModal.nombre} producto={prodModal.datos} onConfirmar={confirmar} onCerrar={()=>setProdModal(null)}/>}
 
-      {/* Mesa / Cliente */}
-      <input style={inputStyle("mesa")}
-        placeholder="🪑 Mesa / Nombre del cliente (obligatorio)"
-        value={mesa} onChange={e=>setMesa(e.target.value)}/>
+      <input style={{...S.mesaInput,...(errores.mesa?{border:"2px solid #EF233C"}:{})}}
+        placeholder="🪑 Mesa / Nombre del cliente (obligatorio)" value={mesa} onChange={e=>setMesa(e.target.value)}/>
       {errores.mesa && <div style={S.errMsg}>{errores.mesa}</div>}
 
-      {/* Mesero */}
-      <input style={inputStyle("mesero")}
-        placeholder="👤 Nombre del mesero (obligatorio)"
-        value={mesero} onChange={e=>setMesero(e.target.value)}/>
+      <input style={{...S.mesaInput,...(errores.mesero?{border:"2px solid #EF233C"}:{})}}
+        placeholder="👤 Nombre del mesero (obligatorio)" value={mesero} onChange={e=>setMesero(e.target.value)}/>
       {errores.mesero && <div style={S.errMsg}>{errores.mesero}</div>}
 
-      {/* Tipo de servicio */}
-      <div style={{marginBottom:errores.servicio?4:16}}>
-        <div style={{fontSize:13,color:"#aaa",marginBottom:8,fontWeight:600}}>📦 Tipo de servicio <span style={{color:"#EF233C"}}>*</span></div>
+      <div style={{marginBottom:errores.tipo?4:16}}>
+        <div style={{fontSize:13,color:"#aaa",marginBottom:8,fontWeight:600}}>{"📦 Tipo de servicio "}
+          <span style={{color:"#EF233C"}}>*</span>
+        </div>
         <div style={{display:"flex",gap:10}}>
           {[{v:"sitio",l:"🍽️ En sitio"},{v:"llevar",l:"🥡 Para llevar"}].map(op=>(
             <button key={op.v}
-              style={{flex:1,padding:"11px 0",borderRadius:12,border:`2px solid ${tipoServicio===op.v?"#E85D04":(errores.servicio?"#EF233C":"#333")}`,
-                background:tipoServicio===op.v?"#E85D04":"#1A1A1A",
-                color:tipoServicio===op.v?"#fff":"#aaa",fontWeight:700,fontSize:14,cursor:"pointer"}}
-              onClick={()=>setTipoServicio(op.v)}>
-              {op.l}
-            </button>
+              style={{flex:1,padding:"11px 0",borderRadius:12,
+                border:"2px solid "+(tipo===op.v?"#E85D04":errores.tipo?"#EF233C":"#333"),
+                background:tipo===op.v?"#E85D04":"#1A1A1A",
+                color:tipo===op.v?"#fff":"#aaa",fontWeight:700,fontSize:14,cursor:"pointer"}}
+              onClick={()=>setTipo(op.v)}>{op.l}</button>
           ))}
         </div>
       </div>
-      {errores.servicio && <div style={S.errMsg}>{errores.servicio}</div>}
+      {errores.tipo && <div style={S.errMsg}>{errores.tipo}</div>}
 
-      {/* Filtro comida/postre/bebida */}
       <div style={S.filtroRow}>
         <button style={{...S.filtroBtn,...(filtro==="comida"?S.filtroBtnOn:{})}} onClick={()=>setFiltro("comida")}>🍽️ Comida</button>
-        <button style={{...S.filtroBtn,...(filtro==="postre"?S.filtroBtnOn:{})}} onClick={()=>setFiltro("postre")}>🍮 Postres</button>
         <button style={{...S.filtroBtn,...(filtro==="bebida"?S.filtroBtnOn:{})}} onClick={()=>setFiltro("bebida")}>🥤 Bebidas</button>
       </div>
 
       <div style={S.menuGrid}>
         {Object.entries(menu).filter(([,d])=>d.categoria===filtro).map(([n,d])=>(
-          <button key={n} style={{...S.mCard,borderTop:`4px solid ${d.color}`,cursor:"pointer"}}
-            onClick={()=>setProductoModal({nombre:n,datos:d})}>
+          <button key={n} style={{...S.mCard,borderTop:"4px solid "+d.color,cursor:"pointer"}} onClick={()=>setProdModal({nombre:n,datos:d})}>
             <div style={{fontSize:28}}>{d.icon}</div>
             <div style={{fontWeight:700,fontSize:13,margin:"5px 0 3px"}}>{n}</div>
             <div style={{fontSize:11,color:"#aaa"}}>
-              {d.precio?fmt(d.precio):d.precios?`desde ${fmt(Math.min(...Object.values(d.precios)))}`:""}{d.unidad?` ${d.unidad}`:""}
+              {d.precio?fmt(d.precio):d.precios?"desde "+fmt(Math.min(...Object.values(d.precios))):""}
+              {d.unidad?" "+d.unidad:""}
             </div>
           </button>
         ))}
       </div>
 
-      {carrito.length > 0 && (
+      {carrito.length>0 && (
         <div style={S.carritoPanel}>
           <div style={{fontWeight:800,marginBottom:10,color:"#E85D04",fontSize:15}}>🛒 Carrito</div>
           {carrito.map((item,i)=>(
             <div key={i} style={{...S.carritoRow,flexWrap:"wrap",gap:4}}>
-              <span style={{flex:1,fontSize:13,minWidth:0}}>
-                {item.icon} {item.nombre}
-                <span style={{color:"#E85D04",fontWeight:700,marginLeft:6}}>×{item.cantidad}</span>
-              </span>
+              <span style={{flex:1,fontSize:13,minWidth:0}}>{item.icon+" "+item.nombre}<span style={{color:"#E85D04",fontWeight:700,marginLeft:6}}>{"×"+item.cantidad}</span></span>
               <span style={{fontSize:13,color:"#E85D04",fontWeight:700,marginRight:6}}>{fmt(item.subtotal)}</span>
               {menu[item.nombre.split(" (")[0].trim()] && (
-                <button style={{background:"#3A86FF",border:"none",color:"#fff",borderRadius:6,
-                  padding:"3px 8px",fontSize:11,fontWeight:700,cursor:"pointer",marginRight:4}}
-                  onClick={()=>editarItem(i)}>✏️</button>
+                <button style={{background:"#3A86FF",border:"none",color:"#fff",borderRadius:6,padding:"3px 8px",fontSize:11,fontWeight:700,cursor:"pointer",marginRight:4}} onClick={()=>editarItem(i)}>✏️</button>
               )}
-              <button style={S.removeBtn} onClick={()=>setCarrito(prev=>prev.filter((_,j)=>j!==i))}>✕</button>
+              <button style={S.removeBtn} onClick={()=>setCarrito(p=>p.filter((_,j)=>j!==i))}>✕</button>
             </div>
           ))}
-          <div style={{borderTop:"1px solid #333",marginTop:10,paddingTop:10,fontWeight:800,fontSize:17,textAlign:"right"}}>
-            Total: {fmt(total)}
-          </div>
-          <button style={{...S.fab,...(!mesa.trim()||!mesero.trim()||!tipoServicio?{opacity:0.5}:{})}} onClick={enviar}>
-            🚀 Enviar Pedido · {fmt(total)}
+          <div style={{borderTop:"1px solid #333",marginTop:10,paddingTop:10,fontWeight:800,fontSize:17,textAlign:"right"}}>{"Total: "+fmt(total)}</div>
+          <button style={{...S.fab,...(!mesa.trim()||!mesero.trim()||!tipo?{opacity:0.5}:{})}} onClick={enviar}>
+            {"🚀 Enviar Pedido · "+fmt(total)}
           </button>
         </div>
       )}
@@ -1341,19 +762,43 @@ function Pedido({ onAdd, menu, sesion }) {
   );
 }
 
-// ══════════════════════════════════════════════════════
-// REPORTES
-// ══════════════════════════════════════════════════════
+// ── REPORTES ──────────────────────────────────────────
 function Reportes({ pedidos }) {
   const hoy     = getTodayKey();
   const validos = pedidos.filter(p=>p.estado!=="cancelado");
   const hoyP    = validos.filter(p=>p.fecha===hoy);
+  const [modalExcel, setModalExcel] = useState(false);
+  const [fechaX,     setFechaX]     = useState(hoy);
+  const fechas = [...new Set(pedidos.map(p=>p.fecha).filter(Boolean))].sort().reverse();
+
   return (
     <div style={S.rWrap}>
+      {modalExcel && (
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+          <div style={{background:"#1A1A1A",borderRadius:16,padding:24,width:"100%",maxWidth:380,border:"1px solid #333"}}>
+            <h3 style={{color:"#E85D04",margin:"0 0 16px"}}>📥 Exportar reporte</h3>
+            <label style={{display:"block",fontSize:12,color:"#888",marginBottom:6,fontWeight:600,textTransform:"uppercase"}}>Selecciona el día</label>
+            <select style={{width:"100%",background:"#111",border:"1px solid #444",color:"#fff",borderRadius:8,padding:"10px 12px",fontSize:15,marginBottom:12}}
+              value={fechaX} onChange={e=>setFechaX(e.target.value)}>
+              {fechas.map(f=><option key={f} value={f}>{f+(f===hoy?" (hoy)":"")}</option>)}
+            </select>
+            <div style={{fontSize:13,color:"#aaa",marginBottom:16}}>
+              {"Pedidos: "}
+              <b style={{color:"#E85D04"}}>{pedidos.filter(p=>p.fecha===fechaX&&p.estado!=="cancelado").length}</b>
+              {" · Total: "}
+              <b style={{color:"#E85D04"}}>{fmt(pedidos.filter(p=>p.fecha===fechaX&&p.estado!=="cancelado").reduce((s,p)=>s+(p.total||0),0))}</b>
+            </div>
+            <div style={{display:"flex",gap:10}}>
+              <button style={{flex:1,padding:"11px 0",border:"none",borderRadius:10,background:"#333",color:"#ccc",fontWeight:700,cursor:"pointer"}} onClick={()=>setModalExcel(false)}>Cancelar</button>
+              <button style={{flex:2,padding:"11px 0",border:"none",borderRadius:10,background:"#1D6F42",color:"#fff",fontWeight:800,cursor:"pointer"}} onClick={()=>{exportarExcel(pedidos,fechaX);setModalExcel(false);}}>📥 Descargar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10,marginBottom:16}}>
         <h3 style={{color:"#E85D04",margin:0}}>📊 Reportes</h3>
-        <button style={{background:"#1D6F42",color:"#fff",border:"none",borderRadius:10,padding:"9px 16px",fontWeight:700,fontSize:13,cursor:"pointer"}}
-          onClick={()=>exportarExcel(pedidos)}>📥 Exportar Excel del día</button>
+        <button style={{background:"#1D6F42",color:"#fff",border:"none",borderRadius:10,padding:"9px 16px",fontWeight:700,fontSize:13,cursor:"pointer"}} onClick={()=>setModalExcel(true)}>📥 Exportar Excel</button>
       </div>
       <div style={{display:"flex",gap:12,flexWrap:"wrap",marginBottom:20}}>
         {[
@@ -1368,7 +813,7 @@ function Reportes({ pedidos }) {
       <h4 style={{color:"#ccc",margin:"0 0 10px"}}>Últimos 30 pedidos</h4>
       {pedidos.slice(0,30).map(p=>(
         <div key={p.id} style={{...S.card,marginBottom:6,fontSize:13}}>
-          <b>#{p.idDia||String(p.ts||"").slice(-4)}</b> — {p.mesa||"Sin mesa"} — {p.mesero?`👤 ${p.mesero} · `:""}{p.tipoServicio==="llevar"?"🥡 ":"🍽️ "}{p.fecha} {p.hora} — {fmt(p.total)} —{" "}
+          <b>{"#"+(p.idDia||String(p.ts||"").slice(-4))}</b>{" — "+(p.mesa||"Sin mesa")}{p.mesero?" · 👤 "+p.mesero:""}{" — "+p.fecha+" "+p.hora+" — "+fmt(p.total)+" — "}
           <span style={{color:p.estado==="cancelado"?"#EF233C":p.estado==="cobrado"?"#1D6F42":"#06D6A0"}}>{p.estado}</span>
         </div>
       ))}
@@ -1376,241 +821,236 @@ function Reportes({ pedidos }) {
   );
 }
 
-// ══════════════════════════════════════════════════════
-// ADMIN — CRUD de menú + gestión de usuarios
-// ══════════════════════════════════════════════════════
+// ── ADMIN ─────────────────────────────────────────────
 function AdminView({ menu, onUpdate }) {
-  const [seccion,  setSeccion]  = useState("menu");   // "menu" | "usuarios"
-  const [tab,      setTab]      = useState("lista");
-  const [editando, setEditando] = useState(null);
-  const [form,     setForm]     = useState(formVacio());
-  // Usuarios: se guardan en Firebase bajo /usuarios
-  const [usuarios,    setUsuarios]    = useState({});
-  const [tabU,        setTabU]        = useState("lista"); // "lista"|"nuevo"
-  const [editandoU,   setEditandoU]   = useState(null);
-  const [formU,       setFormU]       = useState({usuario:"",pass:"",rol:"mesero"});
-  const [notifAdmin,  setNotifAdmin]  = useState(null);
+  const [seccion,   setSeccion]   = useState("menu");
+  const [tab,       setTab]       = useState("lista");
+  const [editando,  setEditando]  = useState(null);
+  const [form,      setForm]      = useState(fVacio());
+  const [usuarios,  setUsuarios]  = useState({});
+  const [tabU,      setTabU]      = useState("lista");
+  const [editandoU, setEditandoU] = useState(null);
+  const [formU,     setFormU]     = useState({usuario:"",pass:"",rol:"mesero"});
+  const [notifA,    setNotifA]    = useState(null);
 
-  useEffect(()=>{
-    db.ref("usuarios").on("value", snap=>{
-      const val = snap.val();
-      // Merge Firebase users with hardcoded fallback
-      setUsuarios(val || {});
-    });
-  },[]);
+  useEffect(()=>{ db.ref("usuarios").on("value",snap=>setUsuarios(snap.val()||{})); },[]);
+  const showA = msg=>{ setNotifA(msg); setTimeout(()=>setNotifA(null),2500); };
 
-  const showNotifAdmin = msg => { setNotifAdmin(msg); setTimeout(()=>setNotifAdmin(null),2500); };
-
-  const guardarUsuario = () => {
-    const u = formU.usuario.trim().toLowerCase();
-    if (!u)           { alert("El nombre de usuario es obligatorio"); return; }
-    if (!formU.pass)  { alert("La contraseña es obligatoria"); return; }
-    db.ref(`usuarios/${u}`).set({ pass:formU.pass, rol:formU.rol });
-    showNotifAdmin(`✅ Usuario "${u}" ${editandoU?"actualizado":"creado"}`);
-    setTabU("lista"); setEditandoU(null); setFormU({usuario:"",pass:"",rol:"mesero"});
-  };
-
-  const editarUsuario = (u, datos) => {
-    setFormU({ usuario:u, pass:datos.pass, rol:datos.rol });
-    setEditandoU(u); setTabU("nuevo");
-  };
-
-  const eliminarUsuario = (u) => {
-    if (!confirm(`¿Eliminar al usuario "${u}"?`)) return;
-    db.ref(`usuarios/${u}`).remove();
-    showNotifAdmin(`🗑️ Usuario "${u}" eliminado`);
-  };
-
-  function formVacio() {
-    return { nombre:"", icon:"🍽️", color:"#E85D04", categoria:"comida",
-             precio:"", unidad:"", variantes:"", rellenos:"", sabores:"", extras:"", preciosRaw:"" };
+  function fVacio() {
+    return {nombre:"",icon:"🍽️",color:"#E85D04",categoria:"comida",precio:"",unidad:"",
+            rellenos:"",sabores:"",extras:"",tipoPrecio:"fijo",variantesPrecios:[],conExtraQueso:false};
   }
 
-  const abrirNuevo  = () => { setForm(formVacio()); setEditando(null); setTab("nuevo"); };
-  const abrirEditar = nombre => {
-    const d = menu[nombre];
+  const abrirNuevo = ()=>{ setForm(fVacio()); setEditando(null); setTab("nuevo"); };
+  const abrirEditar = n=>{
+    const d = menu[n];
+    const tieneP = d.precios&&Object.keys(d.precios).length>0;
     setForm({
-      nombre, icon:d.icon||"🍽️", color:d.color||"#E85D04", categoria:d.categoria||"comida",
+      nombre:n, icon:d.icon||"🍽️", color:d.color||"#E85D04", categoria:d.categoria||"comida",
       precio:d.precio||"", unidad:d.unidad||"",
-      variantes:(d.variantes||[]).join(", "),
       rellenos:(d.rellenos||[]).join(", "),
       sabores:(d.sabores||[]).join(", "),
-      extras:(d.extras||[]).join(", "),
-      preciosRaw: d.precios ? JSON.stringify(d.precios,null,2) : "",
+      extras:(d.extras||[]).filter(e=>!e.includes("Extra Queso")).join(", "),
+      tipoPrecio:tieneP?"variante":"fijo",
+      variantesPrecios:tieneP?Object.entries(d.precios).map(([nm,p])=>({nombre:nm,precio:p})):[],
+      conExtraQueso:(d.extras||[]).some(e=>e.includes("Extra Queso")),
     });
-    setEditando(nombre); setTab("nuevo");
+    setEditando(n); setTab("nuevo");
   };
-
-  const eliminar = nombre => {
-    if (!confirm(`¿Eliminar "${nombre}" del menú?`)) return;
-    const nuevo = {...menu}; delete nuevo[nombre]; onUpdate(nuevo);
-  };
-
-  const guardar = () => {
+  const eliminar = n=>{ if(!confirm("¿Eliminar \""+n+"\"?")) return; const nm={...menu}; delete nm[n]; onUpdate(nm); };
+  const guardar = ()=>{
     const n = form.nombre.trim();
-    if (!n) { alert("El nombre es obligatorio"); return; }
-    const split = s => s.split(",").map(x=>x.trim()).filter(Boolean);
-    let precios = null;
-    if (form.preciosRaw.trim()) {
-      try { precios = JSON.parse(form.preciosRaw); } catch { alert("Formato de precios inválido (JSON)"); return; }
+    if(!n){ alert("El nombre es obligatorio"); return; }
+    const split = s=>s?s.split(",").map(x=>x.trim()).filter(Boolean):[];
+    let precio=null,precios=null,variantes=null;
+    if(form.tipoPrecio==="variante"){
+      if(!form.variantesPrecios||form.variantesPrecios.length===0){ alert("Agrega al menos una opción con precio"); return; }
+      precios={}; variantes=[];
+      form.variantesPrecios.forEach(vp=>{ precios[vp.nombre]=vp.precio; variantes.push(vp.nombre); });
+    } else {
+      if(!form.precio){ alert("El precio es obligatorio"); return; }
+      precio=Number(form.precio);
     }
+    const extrasF = form.conExtraQueso&&form.categoria==="comida"?[...split(form.extras),"Extra Queso +$5"]:split(form.extras);
     const prod = {
       icon:form.icon||"🍽️", color:form.color||"#E85D04", categoria:form.categoria||"comida",
-      ...(form.precio?{precio:Number(form.precio)}:{}),
+      ...(precio!==null?{precio}:{}),
       ...(form.unidad?{unidad:form.unidad}:{}),
-      ...(split(form.variantes).length?{variantes:split(form.variantes)}:{}),
-      ...(split(form.rellenos).length ?{rellenos:split(form.rellenos)}:{}),
-      ...(split(form.sabores).length  ?{sabores:split(form.sabores)}:{}),
-      ...(split(form.extras).length   ?{extras:split(form.extras)}:{}),
+      ...(variantes&&variantes.length?{variantes}:{}),
+      ...(split(form.rellenos).length?{rellenos:split(form.rellenos)}:{}),
+      ...(split(form.sabores).length?{sabores:split(form.sabores)}:{}),
+      ...(extrasF.length?{extras:extrasF}:{}),
       ...(precios?{precios}:{}),
     };
-    const nuevo = {...menu};
-    if (editando && editando!==n) delete nuevo[editando];
-    nuevo[n] = prod; onUpdate(nuevo); setTab("lista");
+    const nm={...menu};
+    if(editando&&editando!==n) delete nm[editando];
+    nm[n]=prod; onUpdate(nm); setTab("lista"); setForm(fVacio()); setEditando(null);
   };
 
-  const inp = (campo, placeholder, tipo="text") => (
-    <input type={tipo} style={SA.inp} placeholder={placeholder}
-      value={form[campo]||""} onChange={e=>setForm(p=>({...p,[campo]:e.target.value}))}/>
-  );
+  const guardarU = ()=>{
+    const u=formU.usuario.trim().toLowerCase();
+    if(!u){ alert("Usuario obligatorio"); return; }
+    if(!formU.pass){ alert("Contraseña obligatoria"); return; }
+    db.ref("usuarios/"+u).set({pass:formU.pass,rol:formU.rol});
+    showA("✅ Usuario \""+u+"\" "+(editandoU?"actualizado":"creado"));
+    setTabU("lista"); setEditandoU(null); setFormU({usuario:"",pass:"",rol:"mesero"});
+  };
+  const editarU = (u,d)=>{ setFormU({usuario:u,pass:d.pass,rol:d.rol}); setEditandoU(u); setTabU("nuevo"); };
+  const eliminarU = u=>{ if(!confirm("¿Eliminar usuario \""+u+"\"?")) return; db.ref("usuarios/"+u).remove(); showA("🗑️ Usuario eliminado"); };
 
   return (
     <div style={S.rWrap}>
-      {notifAdmin && <div style={{...S.toast,top:70}}>{notifAdmin}</div>}
-
-      {/* Selector de sección */}
+      {notifA && <div style={{...S.toast,top:70}}>{notifA}</div>}
       <div style={{display:"flex",gap:8,marginBottom:20}}>
         <button style={{...SA.tabBtn,...(seccion==="menu"?SA.tabBtnOn:{})}} onClick={()=>setSeccion("menu")}>🍽️ Menú</button>
         <button style={{...SA.tabBtn,...(seccion==="usuarios"?SA.tabBtnOn:{})}} onClick={()=>setSeccion("usuarios")}>👥 Usuarios</button>
       </div>
 
-      {/* ── SECCIÓN MENÚ ── */}
       {seccion==="menu" && (
-      <div>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
-        <h3 style={{color:"#E85D04",margin:0}}>⚙️ Gestión de Menú</h3>
-        {tab==="lista"
-          ? <button style={SA.btnVerde} onClick={abrirNuevo}>+ Nuevo producto</button>
-          : <button style={SA.btnGris}  onClick={()=>setTab("lista")}>← Volver</button>}
-      </div>
+        <div>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+            <h3 style={{color:"#E85D04",margin:0}}>⚙️ Gestión de Menú</h3>
+            {tab==="lista"?<button style={SA.btnVerde} onClick={abrirNuevo}>+ Nuevo producto</button>
+                          :<button style={SA.btnGris}  onClick={()=>setTab("lista")}>← Volver</button>}
+          </div>
 
-      {tab==="lista" && (
-        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:10}}>
-          {Object.entries(menu).map(([n,d])=>(
-            <div key={n} style={{...S.card,borderTop:`4px solid ${d.color}`,padding:12}}>
-              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
-                <span style={{fontSize:24}}>{d.icon}</span>
-                <div>
-                  <div style={{fontWeight:700,fontSize:14}}>{n}</div>
-                  <div style={{fontSize:11,color:"#aaa"}}>{d.categoria} · {d.precio?fmt(d.precio):d.precios?`desde ${fmt(Math.min(...Object.values(d.precios)))}`:""}</div>
+          {tab==="lista" && (
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:10}}>
+              {Object.entries(menu).map(([n,d])=>(
+                <div key={n} style={{...S.card,borderTop:"4px solid "+d.color,padding:12}}>
+                  <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+                    <span style={{fontSize:24}}>{d.icon}</span>
+                    <div>
+                      <div style={{fontWeight:700,fontSize:14}}>{n}</div>
+                      <div style={{fontSize:11,color:"#aaa"}}>{d.categoria+" · "+(d.precio?fmt(d.precio):d.precios?"desde "+fmt(Math.min(...Object.values(d.precios))):"")} </div>
+                    </div>
+                  </div>
+                  <div style={{display:"flex",gap:6}}>
+                    <button style={{...SA.btnPeq,background:"#3A86FF"}} onClick={()=>abrirEditar(n)}>✏️ Editar</button>
+                    <button style={{...SA.btnPeq,background:"#EF233C"}} onClick={()=>eliminar(n)}>🗑️ Eliminar</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {tab==="nuevo" && (
+            <div style={{maxWidth:500}}>
+              <h4 style={{color:"#ccc",marginTop:0,marginBottom:16}}>{editando?"✏️ Editando: "+editando:"✨ Nuevo producto"}</h4>
+
+              <div style={SA.bloque}>
+                <div style={SA.bloqueTitle}>1. Información básica</div>
+                <div style={SA.grupo}>
+                  <label style={SA.lbl}>Nombre *</label>
+                  <input style={SA.inp} placeholder="Ej: Tlayuda, Pozole…" value={form.nombre} onChange={e=>setForm(p=>({...p,nombre:e.target.value}))}/>
+                </div>
+                <div style={{display:"flex",gap:10,alignItems:"flex-end"}}>
+                  <div style={{...SA.grupo,flex:1,marginBottom:0}}>
+                    <label style={SA.lbl}>Categoría</label>
+                    <select style={SA.inp} value={form.categoria} onChange={e=>setForm(p=>({...p,categoria:e.target.value}))}>
+                      <option value="comida">🍽️ Comida</option>
+                      <option value="bebida">🥤 Bebida</option>
+                    </select>
+                  </div>
+                  <div style={{...SA.grupo,flex:1,marginBottom:0}}>
+                    <label style={SA.lbl}>Ícono (emoji)</label>
+                    <input style={SA.inp} placeholder="🍽️" value={form.icon} onChange={e=>setForm(p=>({...p,icon:e.target.value}))}/>
+                  </div>
+                  <div style={{...SA.grupo,marginBottom:0}}>
+                    <label style={SA.lbl}>Color</label>
+                    <input type="color" value={form.color} onChange={e=>setForm(p=>({...p,color:e.target.value}))}
+                      style={{width:48,height:42,borderRadius:8,border:"none",cursor:"pointer",display:"block"}}/>
+                  </div>
                 </div>
               </div>
-              <div style={{display:"flex",gap:6}}>
-                <button style={{...SA.btnPeq,background:"#3A86FF"}} onClick={()=>abrirEditar(n)}>✏️ Editar</button>
-                <button style={{...SA.btnPeq,background:"#EF233C"}} onClick={()=>eliminar(n)}>🗑️ Eliminar</button>
+
+              <div style={SA.bloque}>
+                <div style={SA.bloqueTitle}>2. Precio</div>
+                <div style={{display:"flex",gap:8,marginBottom:12}}>
+                  <button style={{...SA.chipOpt,...(form.tipoPrecio!=="variante"?SA.chipOptOn:{})}} onClick={()=>setForm(p=>({...p,tipoPrecio:"fijo"}))}>💲 Precio fijo</button>
+                  <button style={{...SA.chipOpt,...(form.tipoPrecio==="variante"?SA.chipOptOn:{})}} onClick={()=>setForm(p=>({...p,tipoPrecio:"variante"}))}>📊 Por tamaño/tipo</button>
+                </div>
+                {form.tipoPrecio!=="variante"?(
+                  <div style={{display:"flex",gap:10}}>
+                    <div style={{...SA.grupo,flex:2,marginBottom:0}}>
+                      <label style={SA.lbl}>Precio ($) *</label>
+                      <input type="number" style={SA.inp} placeholder="Ej: 55" value={form.precio} onChange={e=>setForm(p=>({...p,precio:e.target.value}))}/>
+                    </div>
+                    <div style={{...SA.grupo,flex:1,marginBottom:0}}>
+                      <label style={SA.lbl}>Unidad</label>
+                      <input style={SA.inp} placeholder="c/u" value={form.unidad} onChange={e=>setForm(p=>({...p,unidad:e.target.value}))}/>
+                    </div>
+                  </div>
+                ):(
+                  <VariantePrecioEditor value={form.variantesPrecios||[]} onChange={vp=>setForm(p=>({...p,variantesPrecios:vp}))}/>
+                )}
               </div>
+
+              <div style={SA.bloque}>
+                <div style={SA.bloqueTitle}>{"3. Opciones "}<span style={{color:"#666",fontWeight:400,fontSize:12}}>(opcionales)</span></div>
+                <div style={SA.grupo}>
+                  <label style={SA.lbl}>Rellenos / Ingrediente</label>
+                  <ChipEditor value={form.rellenos||""} onChange={v=>setForm(p=>({...p,rellenos:v}))} placeholder="Escribe y presiona Enter"/>
+                </div>
+                <div style={SA.grupo}>
+                  <label style={SA.lbl}>Sabores</label>
+                  <ChipEditor value={form.sabores||""} onChange={v=>setForm(p=>({...p,sabores:v}))} placeholder="Escribe y presiona Enter"/>
+                </div>
+                <div style={{...SA.grupo,marginBottom:0}}>
+                  <label style={SA.lbl}>Extras / Complementos</label>
+                  <ChipEditor value={form.extras||""} onChange={v=>setForm(p=>({...p,extras:v}))} placeholder="Escribe y presiona Enter"/>
+                  {form.categoria==="comida" && (
+                    <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",fontSize:13,color:"#aaa",marginTop:8}}>
+                      <input type="checkbox" checked={form.conExtraQueso||false} onChange={e=>setForm(p=>({...p,conExtraQueso:e.target.checked}))} style={{width:16,height:16}}/>
+                      Incluir "Extra Queso +$5"
+                    </label>
+                  )}
+                </div>
+              </div>
+
+              <button style={{...SA.btnVerde,width:"100%",padding:"14px 0",fontSize:15,marginTop:4}} onClick={guardar}>
+                {"💾 "+(editando?"Guardar cambios":"Crear producto")}
+              </button>
             </div>
-          ))}
+          )}
         </div>
       )}
 
-      {tab==="nuevo" && (
-        <div style={{maxWidth:500}}>
-          <h4 style={{color:"#ccc",marginTop:0}}>{editando?"Editando: "+editando:"Nuevo producto"}</h4>
-          <div style={SA.grupo}><label style={SA.lbl}>Nombre *</label>{inp("nombre","Ej: Tlayuda")}</div>
-          <div style={{display:"flex",gap:10}}>
-            <div style={{...SA.grupo,flex:1}}><label style={SA.lbl}>Ícono</label>{inp("icon","🍽️")}</div>
-            <div style={{...SA.grupo,flex:1}}><label style={SA.lbl}>Color</label>
-              <input type="color" value={form.color||"#E85D04"} onChange={e=>setForm(p=>({...p,color:e.target.value}))}
-                style={{width:"100%",height:42,borderRadius:8,border:"none",cursor:"pointer",background:"none"}}/>
-            </div>
-          </div>
-          <div style={SA.grupo}>
-            <label style={SA.lbl}>Categoría</label>
-            <select style={SA.inp} value={form.categoria} onChange={e=>setForm(p=>({...p,categoria:e.target.value}))}>
-              <option value="comida">Comida</option>
-              <option value="bebida">Bebida</option>
-            </select>
-          </div>
-          <div style={{display:"flex",gap:10}}>
-            <div style={{...SA.grupo,flex:2}}><label style={SA.lbl}>Precio fijo ($)</label>{inp("precio","Ej: 55","number")}</div>
-            <div style={{...SA.grupo,flex:1}}><label style={SA.lbl}>Unidad</label>{inp("unidad","c/u")}</div>
-          </div>
-          <div style={SA.grupo}><label style={SA.lbl}>Variantes <span style={{color:"#666",fontWeight:400}}>(separadas por coma)</span></label>{inp("variantes","Ej: Verdes, Rojos")}</div>
-          <div style={SA.grupo}><label style={SA.lbl}>Rellenos <span style={{color:"#666",fontWeight:400}}>(separadas por coma)</span></label>{inp("rellenos","Ej: Pollo, Suadero")}</div>
-          <div style={SA.grupo}><label style={SA.lbl}>Sabores <span style={{color:"#666",fontWeight:400}}>(separadas por coma)</span></label>{inp("sabores","Ej: Chocolate, Fresa")}</div>
-          <div style={SA.grupo}><label style={SA.lbl}>Extras <span style={{color:"#666",fontWeight:400}}>(separadas por coma)</span></label>{inp("extras","Ej: Crema, Cebolla, Extra Queso +$5")}</div>
-          <div style={SA.grupo}>
-            <label style={SA.lbl}>Precios por variante <span style={{color:"#666",fontWeight:400}}>(JSON, opcional)</span></label>
-            <textarea style={{...SA.inp,height:90,resize:"vertical",fontFamily:"monospace",fontSize:12}}
-              placeholder={'{"Corona 1/2 L": 45, "Corona 1 L": 90}'}
-              value={form.preciosRaw||""} onChange={e=>setForm(p=>({...p,preciosRaw:e.target.value}))}/>
-          </div>
-          <button style={{...SA.btnVerde,width:"100%",padding:"13px 0",fontSize:15,marginTop:4}} onClick={guardar}>
-            💾 {editando?"Guardar cambios":"Crear producto"}
-          </button>
-        </div>
-      )}
-    </div>
-      )}
-
-      {/* ── SECCIÓN USUARIOS ── */}
       {seccion==="usuarios" && (
         <div>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
             <h3 style={{color:"#E85D04",margin:0}}>👥 Gestión de Usuarios</h3>
             {tabU==="lista"
-              ? <button style={SA.btnVerde} onClick={()=>{ setFormU({usuario:"",pass:"",rol:"mesero"}); setEditandoU(null); setTabU("nuevo"); }}>+ Nuevo usuario</button>
-              : <button style={SA.btnGris}  onClick={()=>setTabU("lista")}>← Volver</button>}
+              ?<button style={SA.btnVerde} onClick={()=>{setFormU({usuario:"",pass:"",rol:"mesero"});setEditandoU(null);setTabU("nuevo");}}>+ Nuevo usuario</button>
+              :<button style={SA.btnGris}  onClick={()=>setTabU("lista")}>← Volver</button>}
           </div>
-
           {tabU==="lista" && (
             <div style={{display:"flex",flexDirection:"column",gap:10,maxWidth:480}}>
-              {/* Usuarios hardcoded siempre visibles */}
-              {[{u:"admin",d:{rol:"admin"}},{u:"mesero1",d:{rol:"mesero"}},{u:"mesero2",d:{rol:"mesero"}},{u:"mesero3",d:{rol:"mesero"}},{u:"tablero",d:{rol:"tablero"}}].map(({u,d})=>(
+              {[{u:"admin",rol:"admin"},{u:"mesero",rol:"mesero"}].map(({u,rol})=>(
                 <div key={u} style={{...S.card,display:"flex",alignItems:"center",gap:12,padding:14}}>
-                  <div style={{fontSize:28}}>👤</div>
-                  <div style={{flex:1}}>
-                    <div style={{fontWeight:700,fontSize:15}}>{u}</div>
-                    <div style={{fontSize:12,color:"#aaa"}}>{d.rol} · contraseña fija</div>
-                  </div>
+                  <span style={{fontSize:28}}>👤</span>
+                  <div style={{flex:1}}><div style={{fontWeight:700,fontSize:15}}>{u}</div><div style={{fontSize:12,color:"#aaa"}}>{rol+" · contraseña fija"}</div></div>
                   <span style={{fontSize:11,color:"#555",background:"#333",padding:"2px 8px",borderRadius:10}}>sistema</span>
                 </div>
               ))}
-              {/* Usuarios de Firebase */}
               {Object.entries(usuarios).map(([u,d])=>(
                 <div key={u} style={{...S.card,display:"flex",alignItems:"center",gap:12,padding:14}}>
-                  <div style={{fontSize:28}}>👤</div>
-                  <div style={{flex:1}}>
-                    <div style={{fontWeight:700,fontSize:15}}>{u}</div>
-                    <div style={{fontSize:12,color:"#aaa"}}>{d.rol}</div>
-                  </div>
+                  <span style={{fontSize:28}}>👤</span>
+                  <div style={{flex:1}}><div style={{fontWeight:700,fontSize:15}}>{u}</div><div style={{fontSize:12,color:"#aaa"}}>{d.rol}</div></div>
                   <div style={{display:"flex",gap:6}}>
-                    <button style={{...SA.btnPeq,background:"#3A86FF",padding:"5px 10px"}} onClick={()=>editarUsuario(u,d)}>✏️</button>
-                    <button style={{...SA.btnPeq,background:"#EF233C",padding:"5px 10px"}} onClick={()=>eliminarUsuario(u)}>🗑️</button>
+                    <button style={{...SA.btnPeq,background:"#3A86FF",padding:"5px 10px"}} onClick={()=>editarU(u,d)}>✏️</button>
+                    <button style={{...SA.btnPeq,background:"#EF233C",padding:"5px 10px"}} onClick={()=>eliminarU(u)}>🗑️</button>
                   </div>
                 </div>
               ))}
-              {Object.keys(usuarios).length===0 && (
-                <div style={{color:"#555",fontSize:14,padding:10}}>No hay usuarios adicionales creados aún.</div>
-              )}
+              {Object.keys(usuarios).length===0&&<div style={{color:"#555",fontSize:14,padding:10}}>No hay usuarios adicionales.</div>}
             </div>
           )}
-
           {tabU==="nuevo" && (
             <div style={{maxWidth:400}}>
-              <h4 style={{color:"#ccc",marginTop:0}}>{editandoU?`Editando: ${editandoU}`:"Nuevo usuario"}</h4>
-              <div style={SA.grupo}>
-                <label style={SA.lbl}>Usuario *</label>
-                <input style={SA.inp} placeholder="Ej: juan" value={formU.usuario}
-                  disabled={!!editandoU}
-                  onChange={e=>setFormU(p=>({...p,usuario:e.target.value.toLowerCase()}))}/>
-              </div>
-              <div style={SA.grupo}>
-                <label style={SA.lbl}>Contraseña *</label>
-                <input style={SA.inp} placeholder="Contraseña" value={formU.pass}
-                  onChange={e=>setFormU(p=>({...p,pass:e.target.value}))}/>
-              </div>
+              <h4 style={{color:"#ccc",marginTop:0}}>{editandoU?"Editando: "+editandoU:"Nuevo usuario"}</h4>
+              <div style={SA.grupo}><label style={SA.lbl}>Usuario *</label><input style={SA.inp} placeholder="Ej: juan" disabled={!!editandoU} value={formU.usuario} onChange={e=>setFormU(p=>({...p,usuario:e.target.value.toLowerCase()}))}/></div>
+              <div style={SA.grupo}><label style={SA.lbl}>Contraseña *</label><input style={SA.inp} placeholder="Contraseña" value={formU.pass} onChange={e=>setFormU(p=>({...p,pass:e.target.value}))}/></div>
               <div style={SA.grupo}>
                 <label style={SA.lbl}>Rol</label>
                 <select style={SA.inp} value={formU.rol} onChange={e=>setFormU(p=>({...p,rol:e.target.value}))}>
@@ -1618,9 +1058,7 @@ function AdminView({ menu, onUpdate }) {
                   <option value="admin">Admin</option>
                 </select>
               </div>
-              <button style={{...SA.btnVerde,width:"100%",padding:"13px 0",fontSize:15}} onClick={guardarUsuario}>
-                💾 {editandoU?"Guardar cambios":"Crear usuario"}
-              </button>
+              <button style={{...SA.btnVerde,width:"100%",padding:"13px 0",fontSize:15}} onClick={guardarU}>{"💾 "+(editandoU?"Guardar cambios":"Crear usuario")}</button>
             </div>
           )}
         </div>
@@ -1629,20 +1067,7 @@ function AdminView({ menu, onUpdate }) {
   );
 }
 
-const SA = {
-  tabBtn:{ flex:1,padding:"10px 0",borderRadius:10,border:"1px solid #333",background:"#1A1A1A",color:"#888",fontWeight:700,fontSize:14,cursor:"pointer" },
-  tabBtnOn:{ background:"#E85D04",border:"1px solid #E85D04",color:"#fff" },
-  grupo:{ marginBottom:12 },
-  lbl:{ display:"block",fontSize:12,color:"#888",marginBottom:5,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.4px" },
-  inp:{ width:"100%",background:"#111",border:"1px solid #333",color:"#fff",borderRadius:8,padding:"10px 12px",fontSize:14 },
-  btnVerde:{ background:"#1D6F42",color:"#fff",border:"none",borderRadius:10,padding:"9px 16px",fontWeight:700,fontSize:13,cursor:"pointer" },
-  btnGris:{ background:"#333",color:"#ccc",border:"none",borderRadius:10,padding:"9px 16px",fontWeight:700,fontSize:13,cursor:"pointer" },
-  btnPeq:{ flex:1,border:"none",borderRadius:6,padding:"5px 0",color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer" },
-};
-
-// ══════════════════════════════════════════════════════
-// ESTILOS
-// ══════════════════════════════════════════════════════
+// ── ESTILOS ───────────────────────────────────────────
 const S = {
   root:{ minHeight:"100vh",background:"#0F0F0F",color:"#F0EBE3" },
   toast:{ position:"fixed",top:16,left:"50%",transform:"translateX(-50%)",background:"#06D6A0",color:"#0F0F0F",padding:"10px 24px",borderRadius:20,zIndex:9999,fontWeight:700,whiteSpace:"nowrap",boxShadow:"0 4px 20px rgba(0,0,0,.6)" },
@@ -1664,6 +1089,7 @@ const S = {
   cardAcc:{ display:"flex",gap:5,marginTop:8 },
   accBtn:{ flex:1,padding:"5px 3px",border:"none",borderRadius:6,color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer" },
   checkBtn:{ background:"#06D6A0",border:"none",color:"#000",borderRadius:4,padding:"2px 6px",fontSize:10,fontWeight:800,cursor:"pointer",flexShrink:0 },
+  expandBtn:{ width:"100%",marginTop:6,padding:"4px 0",background:"transparent",border:"1px dashed #444",borderRadius:6,color:"#888",fontSize:11,cursor:"pointer",fontWeight:600 },
   filtroRow:{ display:"flex",gap:10,marginBottom:16 },
   filtroBtn:{ flex:1,padding:"10px 0",borderRadius:12,border:"2px solid #333",background:"#1A1A1A",color:"#888",fontSize:15,fontWeight:700,cursor:"pointer" },
   filtroBtnOn:{ background:"#E85D04",border:"2px solid #E85D04",color:"#fff" },
@@ -1680,7 +1106,6 @@ const S = {
   statNum:{ fontSize:26,fontWeight:800,color:"#E85D04" },
   statLbl:{ fontSize:12,color:"#aaa",marginTop:4 },
 };
-
 const M = {
   overlay:{ position:"fixed",inset:0,background:"rgba(0,0,0,0.88)",zIndex:1000,display:"flex",alignItems:"flex-end",justifyContent:"center" },
   box:{ background:"#1A1A1A",borderRadius:"20px 20px 0 0",width:"100%",maxWidth:520,maxHeight:"92vh",display:"flex",flexDirection:"column",border:"1px solid #333",borderBottom:"none" },
@@ -1689,13 +1114,27 @@ const M = {
   body:{ padding:"14px 18px",overflowY:"auto",flex:1 },
   footer:{ padding:"12px 18px 24px",borderTop:"1px solid #2a2a2a",flexShrink:0,background:"#1A1A1A" },
   section:{ marginBottom:18 },
-  sectionTitle:{ fontSize:12,fontWeight:700,color:"#888",marginBottom:8,textTransform:"uppercase",letterSpacing:"0.5px" },
+  stitle:{ fontSize:12,fontWeight:700,color:"#888",marginBottom:8,textTransform:"uppercase",letterSpacing:"0.5px" },
   chipRow:{ display:"flex",flexWrap:"wrap",gap:7 },
   chip:{ padding:"6px 12px",borderRadius:20,border:"1px solid #444",background:"#242424",color:"#ccc",fontSize:13,cursor:"pointer",fontWeight:500 },
   chipOn:{ background:"#E85D04",border:"1px solid #E85D04",color:"#fff",fontWeight:700 },
   notaInput:{ width:"100%",background:"#111",border:"1px solid #444",color:"#fff",borderRadius:8,padding:"8px 12px",fontSize:13 },
   qBtn:{ width:36,height:36,borderRadius:"50%",border:"2px solid #444",background:"#242424",color:"#fff",fontSize:20,cursor:"pointer",fontWeight:700 },
   confirmBtn:{ display:"block",width:"100%",background:"#E85D04",color:"#fff",border:"none",borderRadius:12,padding:"14px 0",fontWeight:800,fontSize:15,cursor:"pointer" },
+};
+const SA = {
+  tabBtn:{ flex:1,padding:"10px 0",borderRadius:10,border:"1px solid #333",background:"#1A1A1A",color:"#888",fontWeight:700,fontSize:14,cursor:"pointer" },
+  tabBtnOn:{ background:"#E85D04",border:"1px solid #E85D04",color:"#fff" },
+  bloque:{ background:"#1a1a1a",border:"1px solid #2e2e2e",borderRadius:12,padding:16,marginBottom:14 },
+  bloqueTitle:{ fontWeight:800,fontSize:13,color:"#E85D04",marginBottom:12,textTransform:"uppercase",letterSpacing:"0.5px" },
+  chipOpt:{ flex:1,padding:"8px 0",borderRadius:10,border:"1px solid #333",background:"#242424",color:"#aaa",fontWeight:600,fontSize:13,cursor:"pointer" },
+  chipOptOn:{ background:"#E85D04",border:"1px solid #E85D04",color:"#fff" },
+  grupo:{ marginBottom:12 },
+  lbl:{ display:"block",fontSize:12,color:"#888",marginBottom:5,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.4px" },
+  inp:{ width:"100%",background:"#111",border:"1px solid #333",color:"#fff",borderRadius:8,padding:"10px 12px",fontSize:14 },
+  btnVerde:{ background:"#1D6F42",color:"#fff",border:"none",borderRadius:10,padding:"9px 16px",fontWeight:700,fontSize:13,cursor:"pointer" },
+  btnGris:{ background:"#333",color:"#ccc",border:"none",borderRadius:10,padding:"9px 16px",fontWeight:700,fontSize:13,cursor:"pointer" },
+  btnPeq:{ flex:1,border:"none",borderRadius:6,padding:"5px 0",color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer" },
 };
 
 ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
