@@ -66,7 +66,8 @@ const MENU_DEFAULT = {
   "Quesadillas":  { icon:"🫓", color:"#9D4EDD", categoria:"comida", precio:30,  variantes:["Chicharrón","Queso","Tinga","Papa con Longaniza","Hongos","Suadero"], extras:["Lechuga","Crema","Queso","Extra Queso +$5"] },
   "Huaraches":    { icon:"🫔", color:"#3A86FF", categoria:"comida", precio:40,  variantes:["Suadero","Longaniza","Campechanos","Otro"], extras:["Cebolla","Lechuga","Queso","Guacamole","Extra Queso +$5"] },
   "Gorditas":     { icon:"🫔", color:"#06D6A0", categoria:"comida", precio:25,  variantes:["Suadero","Longaniza","Chicharrón","Queso","Otro"], extras:["Cilantro","Cebolla","Queso","Extra Queso +$5"] },
-  "Pancita":      { icon:"🫕", color:"#8B1A1A", categoria:"comida", variantes:["Plato Grande","Plato Chico"], precios:{"Plato Grande":110,"Plato Chico":80} },
+  "Pancita":      { icon:"🫕", color:"#8B1A1A", categoria:"comida", variantes:["Grande","Chica"], precios:{"Grande":110,"Chica":85} },
+  "Pozole":       { icon:"🍲", color:"#9B2226", categoria:"comida", variantes:["Grande","Chico"], precios:{"Grande":110,"Chico":85} },
   "Pan de Dulce": { icon:"🍩", color:"#C77DFF", categoria:"comida", precio:12 },
   "Pan Blanco":   { icon:"🍞", color:"#F5CBA7", categoria:"comida", precio:5  },
   "Agua":         { icon:"💧", color:"#00B4D8", categoria:"bebida", variantes:["1/2 L","1 L"], sabores:["Horchata","Jamaica","Limón","Tamarindo"], precios:{"1/2 L":25,"1 L":35} },
@@ -1580,7 +1581,6 @@ const M = {
 };
 
 ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
-  console.log("LLEGUE AL FINAL");
 </script>
 </body>
 </html>
